@@ -53,22 +53,50 @@ class Daily_Raport:
 
 
     def show_raport(self):
-        print(f'Dzienne zakażenia: {self.new_infected}\n'
-                f'Dzienne zgony: {self.new_deads}\n'
-                f'Dzienne szczepienia: {self.new_vaccinated}\n'
-                f'Całkowite zakażenia: {self.total_infected}\n'
-                f'Całkowanie zgony: {self.total_deads}\n'
-                f'Całkowite szczepienia: {self.total_vaccinated}\n')
+        print(f'Daily infected: {self.new_infected}\n'
+                f'Daily deads: {self.new_deads}\n'
+                f'Daily vaccinated: {self.new_vaccinated}\n'
+                f'Total infected: {self.total_infected}\n'
+                f'Total deads: {self.total_deads}\n'
+                f'Total vaccinated: {self.total_vaccinated}\n'
+                f'Data retrieved on : {self.actual_date}\n')
 
 
+    # write in format: date, new infected, new deads, new vaccinated, total infected, total deads, total vaccinated
+    def write_to_file(self,path):
+        try:
+            file=open(path,'r')
+        except OSError:
+            print("Cant modify file. Check for the existence of the file! \n")
+            return -1
 
+        lines=file.readlines()
+        file.close()
+
+        if len(lines)==0:
+            print('File is empty!')
+            return -2
+
+        last_line=lines[-1]
+        last_data=last_line.split(' ')
+        last_date=last_data[0]
+
+        if last_date==self.actual_date:
+            print(f'Data was already written to file today ({last_date}).')
+            return 0
+        else:
+            file=open(path,'a')
+            file.write(str(self.actual_date)+' '+str(self.new_infected)+' '+str(self.new_deads)+' '+str(self.new_vaccinated)+' '+str(self.total_infected)+' '+str(self.total_deads)+' '+str(self.total_vaccinated)\n')
+            file.close()
+            print("Data was successfully written to the file")
+            return 1
 
 
 D=Daily_Raport()
 D.import_data()
 D.show_raport()
-print(D.actual_date)
-#print(date.today())
+D.write_to_file('raports.txt')
+
 
 
 
