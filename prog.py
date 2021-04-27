@@ -1,8 +1,8 @@
-from bs4 import BeautifulSoup
-from requests import get
-from datetime import date
+from lib import *
+
 
 class Daily_Raport:
+
     def __init__(self):
         new_infected=0
         new_deads=0
@@ -22,7 +22,6 @@ class Daily_Raport:
         for i in bs.find('ul',class_='atomsCoronavirusRegion__generalList'):
             data+=str(i.get_text())+'\n'
         return data
-
 
     def import_data(self):
         text=self.get_actual_data()
@@ -51,7 +50,6 @@ class Daily_Raport:
         date_today=date.today()
         self.actual_date=date_today.strftime("%d/%m/%Y")
 
-
     def show_raport(self):
         print(f'Daily infected: {self.new_infected}\n'
                 f'Daily deads: {self.new_deads}\n'
@@ -61,8 +59,7 @@ class Daily_Raport:
                 f'Total vaccinated: {self.total_vaccinated}\n'
                 f'Data retrieved on : {self.actual_date}\n')
 
-
-    # write in format: date, new infected, new deads, new vaccinated, total infected, total deads, total vaccinated
+    # write to file in format: date, new infected, new deads, new vaccinated, total infected, total deads, total vaccinated
     def write_to_file(self,path):
         try:
             file=open(path,'r')
@@ -86,16 +83,17 @@ class Daily_Raport:
             return 0
         else:
             file=open(path,'a')
-            file.write(str(self.actual_date)+' '+str(self.new_infected)+' '+str(self.new_deads)+' '+str(self.new_vaccinated)+' '+str(self.total_infected)+' '+str(self.total_deads)+' '+str(self.total_vaccinated)\n')
+            file.write(str(self.actual_date)+' '+str(self.new_infected)+' '+str(self.new_deads)+' '+str(self.new_vaccinated)+' '+str(self.total_infected)+' '+str(self.total_deads)+' '+str(self.total_vaccinated)+'\n')
             file.close()
             print("Data was successfully written to the file")
             return 1
 
 
-D=Daily_Raport()
-D.import_data()
-D.show_raport()
-D.write_to_file('raports.txt')
+
+# D=Daily_Raport()
+# D.import_data()
+# D.show_raport()
+# D.write_to_file('raports.txt')
 
 
 
