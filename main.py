@@ -1,13 +1,11 @@
 from lib import *
-from prog import Daily_Raport
+from Scrap import Daily_Raport
 from Data_Base import DB
+#from Processing import Process
 
 
 if __name__=="__main__":
-    D=Daily_Raport()
-    D.import_data()
-    #D.show_raport()
-    #D.write_to_file('raports.txt')
+    S=Daily_Raport()
 
-    B=DB(D)
-    B.insert(D)
+    B=DB(S)
+    B.insert(S)

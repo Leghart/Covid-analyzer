@@ -4,30 +4,21 @@ from lib import *
 class Daily_Raport:
 
     def __init__(self):
-        new_infected=0
-        new_deads=0
-        new_vaccinated=0
-
-        total_infected=0
-        total_deads=0
-        total_vaccinated=0
-
-        source_date=None
-        actual_date=''
+        self.import_data()
 
     def get_actual_data(self):
         url='https://gazetawroclawska.pl/'
         page=get(url)
         bs=BeautifulSoup(page.content,'html.parser')
         data=''
-        logf = open("log.txt", "w")
+        logf = open("log.txt", "a")
 
         try:
             for i in bs.find('ul',class_='atomsCoronavirusRegion__generalList'):
                 data+=str(i.get_text())+'\n'
             date= bs.find('span',class_='componentsSpecialCoronavirusNumbers__updatedInfo').get_text()
         except Exception as e:
-            logf.write(f'Failed to scrap page. Error num: {str(e)}\n')
+            logf.write(f'Failed to scrap page. Error num: {str(e)} ({self.source_date})\n')
 
         return data,date
 
@@ -70,9 +61,6 @@ class Daily_Raport:
                 f'Data retrieved on : {self.source_date}\n'
                 f'Actual date: {self.actual_date}\n')
 
-    #def plot(self)
-
-    #def regressor(self)
 
 
 
