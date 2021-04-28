@@ -12,6 +12,7 @@ class Daily_Raport:
         total_deads=0
         total_vaccinated=0
 
+        source_date=None
         actual_date=''
 
     def get_actual_data(self):
@@ -19,12 +20,19 @@ class Daily_Raport:
         page=get(url)
         bs=BeautifulSoup(page.content,'html.parser')
         data=''
-        for i in bs.find('ul',class_='atomsCoronavirusRegion__generalList'):
-            data+=str(i.get_text())+'\n'
-        return data
+        logf = open("log.txt", "w")
+
+        try:
+            for i in bs.find('ul',class_='atomsCoronavirusRegion__generalList'):
+                data+=str(i.get_text())+'\n'
+            date= bs.find('span',class_='componentsSpecialCoronavirusNumbers__updatedInfo').get_text()
+        except Exception as e:
+            logf.write(f'Failed to scrap page. Error num: {str(e)}\n')
+
+        return data,date
 
     def import_data(self):
-        text=self.get_actual_data()
+        text,date_=self.get_actual_data()
         data=text.split('\n')
         del data[-1]
 
@@ -33,8 +41,7 @@ class Daily_Raport:
         deads=(data[1].replace(' ','').replace(':',' ').replace('(',' ').replace(')',' '))
         vaccinated=(data[2].replace(' ','').replace(':',' ').replace('(',' ').replace(')',' '))
 
-
-        # get daily increase
+        # get daily and total increase
         infected_prep=infected.split(' ')
         self.new_infected=int(infected_prep[1].replace('+',''))
         self.total_infected=int(infected_prep[2])
@@ -50,6 +57,9 @@ class Daily_Raport:
         date_today=date.today()
         self.actual_date=date_today.strftime("%d/%m/%Y")
 
+        date_=date_.split(' ')
+        self.source_date=date_[2].replace('.','/').replace(',','')
+
     def show_raport(self):
         print(f'Daily infected: {self.new_infected}\n'
                 f'Daily deads: {self.new_deads}\n'
@@ -57,8 +67,16 @@ class Daily_Raport:
                 f'Total infected: {self.total_infected}\n'
                 f'Total deads: {self.total_deads}\n'
                 f'Total vaccinated: {self.total_vaccinated}\n'
-                f'Data retrieved on : {self.actual_date}\n')
+                f'Data retrieved on : {self.source_date}\n'
+                f'Actual date: {self.actual_date}\n')
 
+    #def plot(self)
+
+    #def regressor(self)
+
+
+
+'''
     # write to file in format: date, new infected, new deads, new vaccinated, total infected, total deads, total vaccinated
     def write_to_file(self,path):
         try:
@@ -78,7 +96,7 @@ class Daily_Raport:
         last_data=last_line.split(' ')
         last_date=last_data[0]
 
-        if last_date==self.actual_date:
+        if self.source_date==last_date:
             print(f'Data was already written to file today ({last_date}).')
             return 0
         else:
@@ -87,47 +105,4 @@ class Daily_Raport:
             file.close()
             print("Data was successfully written to the file")
             return 1
-
-
-
-# D=Daily_Raport()
-# D.import_data()
-# D.show_raport()
-# D.write_to_file('raports.txt')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#chrome_options = Options()
-#chrome_options.add_argument('--headless')
-#driver = webdriver.Chrome(executable_path=r'C:\TestFiles\chromedriver.exe',chrome_options=chrome_options)
-#driver=webdriver.PhantomJS(executable_path=r'C:\TestFiles\chromedriver.exe')
-
-
-#a=driver.find_elements_by_css_selector("calcite ember-application")
-
-
-#path = """/html/body/div/div/div/div/div/div/margin-container/full-container/div[3]"""
-#search_input = driver.find_element_by_xpath(path)
-#print(search_input.get_attribute('placeholder'))
-
-
-
-
-
-#html = driver.page_source
-
-#cos=driver.find_elements_by_class_name('external-html')
-#print(cos)
+'''
