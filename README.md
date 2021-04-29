@@ -4,14 +4,13 @@
 * [Setup](#setup)
 
 ## General info
-This project is simple Lorem ipsum dolor generator.
+This project is Covid analyzer in Poland. It scrap data from gazetawroclawska.pl, add records to data base. In future would
 	
 ## Technologies
 Project is created with:
-* Lorem version: 12.3
-* Ipsum version: 2.33
-* Ament library version: 999
-	
+* BeautifulSoup
+* SQlite3
+
 ## Setup
 To run this project, install it locally using npm:
 
