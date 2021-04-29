@@ -1,5 +1,5 @@
 #from prog import Daily_Raport
-import Scrap as S #Data_Object
+#import Scrap as S #Data_Object
 from lib import *
 
 class DB:
@@ -7,6 +7,7 @@ class DB:
     def __init__(self,S):
         self.con=None
         self.cursor=None
+        
 
     def open(self):
         self.con=sqlite3.connect('Covid_Data.db')
