@@ -45,9 +45,6 @@ class DB:
         if self.get_last_record_date()!=S.source_date:
             self.cursor.execute('INSERT INTO data VALUES (?,?,?,?,?,?,?)',(S.actual_date,S.new_infected,S.new_deads,S.new_vaccinated,S.total_infected,S.total_deads,S.total_vaccinated))
             self.commit()
-            file.write(str(self.actual_date)+' '+str(self.new_infected)+' '+str(self.new_deads)+' '+str(self.new_vaccinated)+' '+str(self.total_infected)+' '+str(self.total_deads)+' '+str(self.total_vaccinated)+'\n')
-
+            file.write(str(S.actual_date)+' '+str(S.new_infected)+' '+str(S.new_deads)+' '+str(S.new_vaccinated)+' '+str(S.total_infected)+' '+str(S.total_deads)+' '+str(S.total_vaccinated)+'\n')
         else:
             logf.write(f"That record is already in data base ({S.source_date}).\n")
-
-    #def check_last_record()
