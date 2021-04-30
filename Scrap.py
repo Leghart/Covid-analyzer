@@ -59,7 +59,6 @@ class Daily_Raport:
                 f'Total deads: {self.total_deads}\n'
                 f'Total vaccinated: {self.total_vaccinated}\n'
                 f'Data retrieved on : {self.source_date}\n')
-                #f'Actual date: {self.actual_date}\n')
 
 
 
@@ -67,4 +66,5 @@ D=Daily_Raport()
 D.import_data()
 D.show_raport()
 
-W=DB(D)
+W=DB()
+W.insert(D)

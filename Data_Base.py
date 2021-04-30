@@ -4,10 +4,11 @@ from lib import *
 
 class DB:
 
-    def __init__(self,S):
+    def __init__(self):
         self.con=None
         self.cursor=None
-        
+        self.open()
+
 
     def open(self):
         self.con=sqlite3.connect('Covid_Data.db')
@@ -33,19 +34,19 @@ class DB:
 
 
     def get_last_record_date(self):
-        self.open()
+        #self.open()
         self.cursor.execute("SELECT * FROM data ORDER BY date DESC LIMIT 1")
         result=self.cursor.fetchone()
         return result[0]
 
 
     def insert(self,S):
-        self.open()
+        #self.open()
         logf=open('log.txt','a')
         file=open('raports.txt','a')
         if self.get_last_record_date()!=S.source_date:
             self.cursor.execute('INSERT INTO data VALUES (?,?,?,?,?,?,?)',(S.actual_date,S.new_infected,S.new_deads,S.new_vaccinated,S.total_infected,S.total_deads,S.total_vaccinated))
-            self.commit()
             file.write(str(S.actual_date)+' '+str(S.new_infected)+' '+str(S.new_deads)+' '+str(S.new_vaccinated)+' '+str(S.total_infected)+' '+str(S.total_deads)+' '+str(S.total_vaccinated)+'\n')
+            self.commit()
         else:
             logf.write(f"That record is already in data base ({S.source_date}).\n")
