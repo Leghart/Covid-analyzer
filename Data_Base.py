@@ -5,11 +5,18 @@ from lib import *
 class DB:
 
     def __init__(self):
-        #self.con=None
-        #self.cursor=None
-        #self.open()
         self.con=sqlite3.connect('Covid_Data.db')
         self.cursor=self.con.cursor()
+
+        # check existing table
+        self.cursor.execute(''' SELECT count(name) FROM sqlite_master WHERE type='table' AND name='data' ''')
+
+        if self.cursor.fetchone()[0]!=1:
+            self.cursor.execute('''CREATE TABLE data (date DATETIME, new_infected INT, new_deads INT, new_vaccinated INT, total_infected INT, total_deads INT, total_vaccinated INT )''')
+            logf = open("log.txt", "a")
+            logf.write('Table not existing. Created new table.\n')
+            logf.close()
+            
 
     def commit(self,S):
         logf=open('log.txt','a')
