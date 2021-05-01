@@ -3,61 +3,69 @@ from Data_Base import DB
 
 class Daily_Raport:
 
-    def __init__(self):
-        self.import_data()
+    def __init__(self,country):
 
-    def get_actual_data(self):
-        url='https://www.medonet.pl/zdrowie/zdrowie-dla-kazdego,zasieg-koronawirusa-covid-19--mapa-,artykul,43602150.html'
+#        self.country=country
+        self.get_actual_data(country)
+
+
+    def get_actual_data(self,country):
+        url='https://www.worldometers.info/coronavirus/#main_table'
         page=get(url)
         bs=BeautifulSoup(page.content,'html.parser')
         data=''
-        logf = open("log.txt", "a")
-        try:
-            for i in bs.find_all('div',class_='inlineFrame'):
-                data+=str(i.get_text())+'\n'
-            date=bs.find('p',class_='paragraph').get_text()
-        except Exception as e:
-            logf.write(f'Failed to scrap page. Error num: {str(e)} \n')
-        return unicodedata.normalize("NFKC",data),date
 
+        table_data=bs.find('table',id='main_table_countries_today')
 
-    def import_data(self):
-        text,date_=self.get_actual_data()
-        data=[x for x in text.splitlines() if x]
+        data=''
+        for tr in table_data.find_all('tr'):
+            data+=tr.get_text()
 
-        inf=data[9].replace(' ','').replace('+','').replace(')','').replace(":",' ').replace('(',' ')
-        dead=data[15].replace(' ','').replace('+','').replace(')','').replace(":",' ').replace('(',' ')
-        nvacc=data[4].replace(' ','')
-        tvacc=data[1].replace(' ','')
-        date_=date_.replace('.','/').replace('[','').replace(']','')
+        data=data.split('\n')
+        idx=data.index(country)
 
-        self.new_infected=int(inf.split(' ')[2])
-        self.total_infected=int(inf.split(' ')[1])
+        end_idx=idx+13
+        data=data[idx:end_idx]
 
-        self.new_deads=int(dead.split(' ')[2])
-        self.total_deads=int(dead.split(' ')[1])
+        self.country=data[0]
+        self.total_cases=int(data[1].replace(',',''))
+        self.new_cases=int(data[2].replace('+','').replace(',',''))
+        self.total_deaths=int(data[3].replace(',',''))
+        self.new_deaths=int(data[4].replace('+','').replace(',',''))
+        self.total_rec=int(data[5].replace(',',''))
+        self.active_cases=int(data[6].replace('+','').replace(',',''))
+        self.critical=int(data[7].replace('+','').replace(',',''))
+        self.total_tests=int(data[10].replace(',',''))
+        self.population=int(data[12].replace(',',''))
 
-        self.new_vaccinated=int(nvacc.split(':')[1])
-        self.total_vaccinated=int(tvacc.split(':')[1])
-
-        self.source_date=date_.split(' ')[1]
         date_today=date.today()
-        self.actual_date=date_today.strftime("%d/%m/%Y")
+        self.date=date_today.strftime("%d/%m/%Y")
 
 
     def show_raport(self):
-        print(f'Daily infected: {self.new_infected}\n'
-                f'Daily deads: {self.new_deads}\n'
-                f'Daily vaccinated: {self.new_vaccinated}\n\n'
-                f'Total infected: {self.total_infected}\n'
-                f'Total deads: {self.total_deads}\n'
-                f'Total vaccinated: {self.total_vaccinated}\n'
-                f'Data retrieved on : {self.source_date}\n')
+        print(f'Country: {self.country}')
+        print(f'Total cases: {self.total_cases}')
+        print(f'New cases: {self.new_cases}')
+        print(f'Total deaths: {self.total_deaths}')
+        print(f'New deaths: {self.new_deaths}')
+        print(f'Total recoveries: {self.total_rec}')
+        print(f'Actice cases: {self.active_cases}')
+        print(f'Critical: {self.critical}')
+        print(f'Total tests: {self.total_tests}')
+        print(f'Population: {self.population}')
+        print(f'Data recived: {self.date}')
 
 
 
+D=Daily_Raport('France')
+D.show_raport()
+W=DB("USA")
+W.insert(D)
+
+'''
 D=Daily_Raport()
 D.show_raport()
 
 W=DB()
 W.insert(D)
+'''

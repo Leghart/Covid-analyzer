@@ -1,22 +1,20 @@
-#from prog import Daily_Raport
-#import Scrap as S #Data_Object
 from lib import *
 
 class DB:
 
-    def __init__(self):
+    def __init__(self,country):
         self.con=sqlite3.connect('Covid_Data.db')
         self.cursor=self.con.cursor()
-
+        self.country=country
         # check existing table
-        self.cursor.execute(''' SELECT count(name) FROM sqlite_master WHERE type='table' AND name='data' ''')
+        self.cursor.execute("SELECT count(name) FROM sqlite_master WHERE type='table' AND name='"+str(country)+"' ")
 
         if self.cursor.fetchone()[0]!=1:
-            self.cursor.execute('''CREATE TABLE data (date DATETIME, new_infected INT, new_deads INT, new_vaccinated INT, total_infected INT, total_deads INT, total_vaccinated INT )''')
+            self.cursor.execute("CREATE TABLE "+str(country)+"(date DATETIME, new_infected INT, total_infected INT, new_deads INT, total_deads INT, total_recovery INT, active_cases INT, critical_cases INT, total_tests INT, population INT )")
             logf = open("log.txt", "a")
             logf.write('Table not existing. Created new table.\n')
             logf.close()
-            
+
 
     def commit(self,S):
         logf=open('log.txt','a')
@@ -24,7 +22,7 @@ class DB:
             self.con.commit()
             self.cursor.close()
             self.con.close()
-            logf.write(f"Data was successfully committed ({S.source_date}).\n")
+            logf.write(f"Data was successfully committed ({S.date}).\n")
             logf.close()
         except Exception:
             logf.write("Data coudn't be commit.\n")
@@ -32,18 +30,20 @@ class DB:
 
 
     def get_last_record_date(self):
-        self.cursor.execute('''SELECT date FROM data ''')
-        return self.cursor.fetchall()[-1][0]
+        self.cursor.execute("SELECT date FROM "+str(self.country) )
+        try:
+            last_date=self.cursor.fetchall()[-1][0]
+        except Exception:
+            last_date=None
+        return last_date
 
 
     def insert(self,S):
         logf=open('log.txt','a')
         file=open('raports.txt','a')
-        if self.get_last_record_date()!=S.source_date:
-            print(self.get_last_record_date())
-            print(S.source_date)
-            self.cursor.execute('INSERT INTO data VALUES (?,?,?,?,?,?,?)',(S.actual_date,S.new_infected,S.new_deads,S.new_vaccinated,S.total_infected,S.total_deads,S.total_vaccinated))
-            file.write(str(S.actual_date)+' '+str(S.new_infected)+' '+str(S.new_deads)+' '+str(S.new_vaccinated)+' '+str(S.total_infected)+' '+str(S.total_deads)+' '+str(S.total_vaccinated)+'\n')
+        if self.get_last_record_date()!=S.date:
+            self.cursor.execute("INSERT INTO "+str(self.country)+ " VALUES (?,?,?,?,?,?,?,?,?,?)",(S.date, S.new_cases, S.total_cases, S.new_deaths, S.total_deaths, S.total_rec, S.active_cases, S.critical, S.total_tests, S.population))
+            file.write(str(S.date)+' '+str(S.new_cases)+' '+str(S.total_cases)+' '+str(S.new_deaths)+' '+str(S.total_deaths)+' '+str(S.total_rec)+ ' '+str(S.total_rec)+' '+str(S.active_cases)+' '+str(S.critical)+' '+str(S.total_tests)+' '+str(S.population)+'\n')
             self.commit(S)
         else:
-            logf.write(f"That record is already in data base ({S.source_date}).\n")
+            logf.write(f"That record is already in data base ({S.date}).\n")
