@@ -4,10 +4,7 @@ from Data_Base import DB
 class Daily_Raport:
 
     def __init__(self,country):
-
-#        self.country=country
         self.get_actual_data(country)
-
 
     def get_actual_data(self,country):
         url='https://www.worldometers.info/coronavirus/#main_table'
@@ -24,23 +21,26 @@ class Daily_Raport:
         data=data.split('\n')
         idx=data.index(country)
 
-        end_idx=idx+13
+        end_idx=idx+14
         data=data[idx:end_idx]
 
-        self.country=data[0]
-        self.total_cases=int(data[1].replace(',',''))
-        self.new_cases=int(data[2].replace('+','').replace(',',''))
-        self.total_deaths=int(data[3].replace(',',''))
-        self.new_deaths=int(data[4].replace('+','').replace(',',''))
-        self.total_rec=int(data[5].replace(',',''))
-        self.active_cases=int(data[6].replace('+','').replace(',',''))
-        self.critical=int(data[7].replace('+','').replace(',',''))
-        self.total_tests=int(data[10].replace(',',''))
-        self.population=int(data[12].replace(',',''))
+        try:
+            self.country=data[0]
+            self.total_cases=int(data[1].replace(',',''))
+            self.new_cases=int(data[2].replace('+','').replace(',',''))
+            self.total_deaths=int(data[3].replace(',',''))
+            self.new_deaths=int(data[4].replace('+','').replace(',',''))
+            self.total_rec=int(data[5].replace(',',''))
+            self.active_cases=int(data[7].replace('+','').replace(',',''))
+            self.critical=int(data[8].replace('+','').replace(',',''))
+            self.total_tests=int(data[11].replace(',',''))
+            self.population=int(data[13].replace(',',''))
 
-        date_today=date.today()
-        self.date=date_today.strftime("%d/%m/%Y")
-
+            date_today=date.today()
+            self.date=date_today.strftime("%d.%m.%Y")
+        except ValueError:
+            print("Data wasn't uploaded on page yet.\n")
+            exit(-1)
 
     def show_raport(self):
         print(f'Country: {self.country}')
@@ -55,17 +55,24 @@ class Daily_Raport:
         print(f'Population: {self.population}')
         print(f'Data recived: {self.date}')
 
+    def show_raport_pl(self):
+        print(f'Państwo: {self.country}')
+        print(f'Wszystkie przypadki zachorowań: {self.total_cases}')
+        print(f'Dzisiejsze zachorowania: {self.new_cases}')
+        print(f'Wszystkie zgony: {self.total_deaths}')
+        print(f'Dzisiejsze zgony: {self.new_deaths}')
+        print(f'Wszyscy wyzdrowiali: {self.total_rec}')
+        print(f'Aktywne przypadki: {self.active_cases}')
+        print(f'Stany krytyczne: {self.critical}')
+        print(f'Wszystkie wykonane testy: {self.total_tests}')
+        print(f'Populacja: {self.population}')
+        print(f'Dane pochodzą z dnia: {self.date}')
 
 
-D=Daily_Raport('France')
+
+
+Country='Poland'
+D=Daily_Raport(Country)
 D.show_raport()
-W=DB("USA")
+W=DB(Country)
 W.insert(D)
-
-'''
-D=Daily_Raport()
-D.show_raport()
-
-W=DB()
-W.insert(D)
-'''
