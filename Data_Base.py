@@ -12,8 +12,10 @@ class DB:
         if self.cursor.fetchone()[0]!=1:
             self.cursor.execute("CREATE TABLE "+self.country+"(date DATETIME, new_infected INT, total_infected INT, new_deads INT, total_deads INT, total_recovered INT, active_cases INT, critical_cases INT, total_tests INT, population INT )")
             logf = open("log.txt", "a")
-            logf.write('Table not existing. Created new table.\n')
+            logf.write(f'Table not existing. Created table: {self.country}.\n')
             logf.close()
+        else:
+            print("successful database connection.\n")
 
     def commit(self,S):
         logf=open('log.txt','a')
@@ -35,6 +37,18 @@ class DB:
             last_date=None
         return last_date
 
+
+    def get_actual_data(self):
+        self.cursor.execute("SELECT * FROM "+self.country )
+        data=self.cursor.fetchall()
+
+        df=pd.DataFrame(list(data))
+        df=df.set_axis(['Data','Nowe przypadki','Wszystkie przypadki','Zgony','Wszystkie zgony,','Wyzdrowiali','Aktywne przypadki','Critical_cases','Total_tests','Population'],axis='columns')
+        df=df.drop(columns=['Data','Critical_cases','Total_tests','Population'])
+        #df=df.drop([0,1,2,3])
+        return df
+
+
     def insert(self,S):
         logf=open('log.txt','a')
         file=open('raports.txt','a')
@@ -45,19 +59,5 @@ class DB:
         else:
             logf.write(f"That record is already in data base ({S.date}).\n")
 
-    def get_old_data(self):
-        file='Zakazenia30323112020.csv'
-        file=open(file)#,encoding="utf-8")
-        data=file.read()
 
-        df=pd.DataFrame([x.split(';') for x in data.split('\n')])
-        df=df.set_axis(['Dzien','Data','Nowe przypadki','Wszystkie przypadki','Zgony','Wszystkie zgony','Ozdrowieńcy (dzienna)','Wyzdrowiali','Aktywne przypadki','Kwarantanna','Nadzór'],axis='columns')
-        df=df.drop(columns=['Dzien','Ozdrowieńcy (dzienna)','Kwarantanna','Nadzór'])
-
-        return df
-
-
-
-
-D=DB('Poland')
-D.get_old_data()
+#D=DB('Poland')

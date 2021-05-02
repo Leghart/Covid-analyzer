@@ -5,6 +5,27 @@ class Daily_Raport:
 
     def __init__(self,country):
         self.get_actual_data(country)
+        self.get_vacc_data()
+
+    def get_vacc_data(self):
+        url='https://www.medonet.pl/zdrowie/zdrowie-dla-kazdego,zasieg-koronawirusa-covid-19--mapa-,artykul,43602150.html'
+        page=get(url)
+        bs=BeautifulSoup(page.content,'html.parser')
+        data=''
+
+        for i in bs.find_all('div',class_='inlineFrame'):
+            data+=str(i.get_text())+'\n'
+
+        data=[x for x in data.splitlines() if x]
+
+        nvacc=data[4].replace(' ','')
+        tvacc=data[1].replace(' ','')
+        ntests=data[7].replace(',','.')
+
+        self.new_vaccinated=int(nvacc.split(':')[1])
+        tmp_tests=ntests.split(':')[1]
+        n=tmp_tests.split(' ')
+        self.new_tests=float(n[1])*1000
 
     def get_actual_data(self,country):
         url='https://www.worldometers.info/coronavirus/#main_table'
@@ -67,12 +88,19 @@ class Daily_Raport:
         print(f'Wszystkie wykonane testy: {self.total_tests}')
         print(f'Populacja: {self.population}')
         print(f'Dane pochodzą z dnia: {self.date}')
+        print(f'Szczepienia dziś: {self.new_vaccinated}')
+        print(f'Testy dziś: {self.new_tests}')
 
 
+Country='Poland'
+D=Daily_Raport(Country)
+D.show_raport_pl()
 
 
+'''
 Country='Poland'
 D=Daily_Raport(Country)
 D.show_raport()
 W=DB(Country)
 W.insert(D)
+'''
