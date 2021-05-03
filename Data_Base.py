@@ -10,7 +10,7 @@ class DB:
         self.cursor.execute("SELECT count(name) FROM sqlite_master WHERE type='table' AND name='"+self.country+"' ")
 
         if self.cursor.fetchone()[0]!=1:
-            self.cursor.execute("CREATE TABLE "+self.country+"(date DATETIME, new_infected INT, total_infected INT, new_deads INT, total_deads INT, total_recovered INT, active_cases INT, critical_cases INT, total_tests INT, population INT )")
+            self.cursor.execute("CREATE TABLE "+self.country+"(date TEXT, new_cases INT, total_cases INT, new_deaths INT, total_deaths INT, total_recovered INT, active_cases INT, tot_1M REAL, fatality_ratio REAL, total_tests INT)")
             logf = open("log.txt", "a")
             logf.write(f'Table not existing. Created table: {self.country}.\n')
             logf.close()
@@ -43,9 +43,8 @@ class DB:
         data=self.cursor.fetchall()
 
         df=pd.DataFrame(list(data))
-        df=df.set_axis(['Data','Nowe przypadki','Wszystkie przypadki','Zgony','Wszystkie zgony,','Wyzdrowiali','Aktywne przypadki','Critical_cases','Total_tests','Population'],axis='columns')
-        df=df.drop(columns=['Data','Critical_cases','Total_tests','Population'])
-        #df=df.drop([0,1,2,3])
+        df=df.set_axis(['Date','New cases','Total cases','New deaths','Total deaths,','Total recovered','Active cases','Tot /1M','Fatality ratio','Total_tests'],axis='columns')
+        df=df.drop(columns=['Data'])
         return df
 
 
@@ -53,8 +52,8 @@ class DB:
         logf=open('log.txt','a')
         file=open('raports.txt','a')
         if self.get_last_record_date()!=S.date:
-            self.cursor.execute("INSERT INTO "+self.country+ " VALUES (?,?,?,?,?,?,?,?,?,?)",(S.date, S.new_cases, S.total_cases, S.new_deaths, S.total_deaths, S.total_rec, S.active_cases, S.critical, S.total_tests, S.population))
-            file.write(str(self.country)+ ' ' +str(S.date)+' '+str(S.new_cases)+' '+str(S.total_cases)+' '+str(S.new_deaths)+' '+str(S.total_deaths)+' '+str(S.total_rec)+ ' '+str(S.total_rec)+' '+str(S.active_cases)+' '+str(S.critical)+' '+str(S.total_tests)+' '+str(S.population)+'\n')
+            self.cursor.execute("INSERT INTO "+self.country+ " VALUES (?,?,?,?,?,?,?,?,?,?)",(S.date, S.new_cases, S.total_cases, S.new_deaths, S.total_deaths, S.total_rec, S.active_cases, S.tot, S.fatality_ratio,S.total_tests))
+            file.write(str(self.country)+ ' ' +str(S.date)+' '+str(S.new_cases)+' '+str(S.total_cases)+' '+str(S.new_deaths)+' '+str(S.total_deaths)+' '+str(S.total_rec)+ ' '+str(S.active_cases)+' '+str(S.tot)+' '+str(S.fatality_ratio)+' '+str(S.total_tests)+'\n')
             self.commit(S)
         else:
             logf.write(f"That record is already in data base ({S.date}).\n")

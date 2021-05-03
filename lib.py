@@ -3,6 +3,7 @@ from requests import get
 from datetime import date
 import unicodedata
 import sqlite3
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -19,3 +20,6 @@ import sklearn
 import sklearn_evaluation
 import math
 import warnings
+
+import ssl
+import smtplib

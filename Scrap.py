@@ -5,27 +5,6 @@ class Daily_Raport:
 
     def __init__(self,country):
         self.get_actual_data(country)
-        self.get_vacc_data()
-
-    def get_vacc_data(self):
-        url='https://www.medonet.pl/zdrowie/zdrowie-dla-kazdego,zasieg-koronawirusa-covid-19--mapa-,artykul,43602150.html'
-        page=get(url)
-        bs=BeautifulSoup(page.content,'html.parser')
-        data=''
-
-        for i in bs.find_all('div',class_='inlineFrame'):
-            data+=str(i.get_text())+'\n'
-
-        data=[x for x in data.splitlines() if x]
-
-        nvacc=data[4].replace(' ','')
-        tvacc=data[1].replace(' ','')
-        ntests=data[7].replace(',','.')
-
-        self.new_vaccinated=int(nvacc.split(':')[1])
-        tmp_tests=ntests.split(':')[1]
-        n=tmp_tests.split(' ')
-        self.new_tests=float(n[1])*1000
 
     def get_actual_data(self,country):
         url='https://www.worldometers.info/coronavirus/#main_table'
@@ -53,15 +32,30 @@ class Daily_Raport:
             self.new_deaths=int(data[4].replace('+','').replace(',',''))
             self.total_rec=int(data[5].replace(',',''))
             self.active_cases=int(data[7].replace('+','').replace(',',''))
-            self.critical=int(data[8].replace('+','').replace(',',''))
+            #self.critical=int(data[8].replace('+','').replace(',',''))
+            self.tot=int(data[9].replace('+','').replace(',','')) #na 1M
             self.total_tests=int(data[11].replace(',',''))
-            self.population=int(data[13].replace(',',''))
+            self.fatality_ratio=round(self.total_deaths/self.total_cases*100,2)
+
 
             date_today=date.today()
             self.date=date_today.strftime("%d.%m.%Y")
+
         except ValueError:
-            print("Data wasn't uploaded on page yet.\n")
+            print(f"Data wasn't uploaded on page yet ({self.country}).\n")
             exit(-1)
+
+    def get_old_data(self):
+        nowy_plik=open('tylko_polska.csv','w')
+        for filename in os.listdir('old_data'):
+           with open(os.path.join('old_data', filename), 'r') as f: # open in readonly mode
+              # do your stuff
+              plik=f.read()
+              linie=plik.split('\n')
+              #for i in linie:
+              wynik=[s for s in linie if "Poland" in s]
+              print(wynik)
+              nowy_plik.writelines(["%s\n" % item  for item in wynik])
 
     def show_raport(self):
         print(f'Country: {self.country}')
@@ -71,36 +65,87 @@ class Daily_Raport:
         print(f'New deaths: {self.new_deaths}')
         print(f'Total recoveries: {self.total_rec}')
         print(f'Actice cases: {self.active_cases}')
-        print(f'Critical: {self.critical}')
+        print(f'Tot cases/1M: {self.tot}')
         print(f'Total tests: {self.total_tests}')
-        print(f'Population: {self.population}')
         print(f'Data recived: {self.date}')
+        print(f'Fatality ratio: {self.fatality_ratio}')
 
     def show_raport_pl(self):
-        print(f'Państwo: {self.country}')
-        print(f'Wszystkie przypadki zachorowań: {self.total_cases}')
-        print(f'Dzisiejsze zachorowania: {self.new_cases}')
-        print(f'Wszystkie zgony: {self.total_deaths}')
-        print(f'Dzisiejsze zgony: {self.new_deaths}')
-        print(f'Wszyscy wyzdrowiali: {self.total_rec}')
-        print(f'Aktywne przypadki: {self.active_cases}')
-        print(f'Stany krytyczne: {self.critical}')
-        print(f'Wszystkie wykonane testy: {self.total_tests}')
-        print(f'Populacja: {self.population}')
-        print(f'Dane pochodzą z dnia: {self.date}')
-        print(f'Szczepienia dziś: {self.new_vaccinated}')
-        print(f'Testy dziś: {self.new_tests}')
+        From="Automatyczny Raport Wirusowy"
+        subject=f'Raport z dnia: {self.date}'
+        message ="""Wszystkie przypadki zachorowan: {}\n
+        Dzisiejsze zachorowania: {}\n
+        Wszystkie zgony: {}\n
+        Dzisiejsze zgony: {}\n
+        Wszyscy wyzdrowiali: {}\n
+        Aktywne przypadki: {}\n
+        Ilość zmarłych na 1M: {}\n
+        Współczynnik smiertelnosci: {}\n
+        Wszystkie wykonane testy: {}
+        """.format(self.total_cases,self.new_cases,self.total_deaths,self.new_deaths,self.total_rec,self.active_cases,self.tot,self.fatality_ratio,self.total_cases)
+
+        return 'Subject: {}\n\n{}'.format(subject,message.encode('ascii', 'ignore').decode('ascii'))
+
+    def send_mail(self):
+        port=465
+        file=open('passwords')
+        passw=file.read().split(';')
+        smtp_server="smtp.gmail.com"
+        nadawca=passw[0]
+        #odbiorca=passw[1]
+        odbiorca='241516@student.pwr.edu.pl'
+        haslo=passw[2]
+
+        message=self.show_raport_pl()
+
+        ssl_pol=ssl.create_default_context()
+        with smtplib.SMTP_SSL(smtp_server,port,context=ssl_pol) as serwer:
+            serwer.login(nadawca,haslo)
+            serwer.sendmail(nadawca,odbiorca,message)
 
 
-Country='Poland'
-D=Daily_Raport(Country)
-D.show_raport_pl()
+D=Daily_Raport('Poland')
+W=DB('Poland')
+W.insert(D)
+D.send_mail()
 
 
+'''
+Country=['Poland']
+for con in Country:
+    D=Daily_Raport(con)
+    D.show_raport_pl()
+    W=DB(con)
+    W.insert(D)
+'''
 '''
 Country='Poland'
 D=Daily_Raport(Country)
 D.show_raport()
 W=DB(Country)
 W.insert(D)
+'''
+
+
+
+'''
+def get_vacc_data(self):
+    url='https://www.medonet.pl/zdrowie/zdrowie-dla-kazdego,zasieg-koronawirusa-covid-19--mapa-,artykul,43602150.html'
+    page=get(url)
+    bs=BeautifulSoup(page.content,'html.parser')
+    data=''
+
+    for i in bs.find_all('div',class_='inlineFrame'):
+        data+=str(i.get_text())+'\n'
+
+    data=[x for x in data.splitlines() if x]
+
+    nvacc=data[4].replace(' ','')
+    tvacc=data[1].replace(' ','')
+    ntests=data[7].replace(',','.')
+
+    self.new_vaccinated=int(nvacc.split(':')[1])
+    tmp_tests=ntests.split(':')[1]
+    n=tmp_tests.split(' ')
+    self.new_tests=float(n[1])*1000
 '''
