@@ -4,7 +4,7 @@
 * [Setup](#setup)
 
 ## General info
-It is a Covid analyzer in Poland. It scrap data from gazetawroclawska.pl, add records to data base. In future would
+It is a Covid analyzer in Poland. It scraps data from gazetawroclawska.pl, adds records to data base. In future would
 	
 ## Technologies
 Project is created with:
@@ -14,7 +14,7 @@ Project is created with:
 ## Setup
 
 ## Periodic data download
-If you want automatically download data you can use: Schedule Manager on Windows or Corn on Linux. This project was done on Windows so here's a instructions how do that:
+If you want automatically download data you can use: Schedule Manager on Windows or Corn on Linux. This project was done on Windows so here's a instructions how to do that:
 * Create file .bat and write there: 
 "full_path_to_python" "full_path_to_Scrap.py"
 pause
