@@ -37,7 +37,6 @@ class DB:
             last_date=None
         return last_date
 
-
     def get_actual_data(self):
         self.cursor.execute("SELECT * FROM "+self.country )
         data=self.cursor.fetchall()
@@ -46,7 +45,6 @@ class DB:
         df=df.set_axis(['Date','New cases','Total cases','New deaths','Total deaths,','Total recovered','Active cases','Tot /1M','Fatality ratio','Total_tests'],axis='columns')
         df=df.drop(columns=['Data'])
         return df
-
 
     def insert(self,S):
         logf=open('log.txt','a')
@@ -57,6 +55,3 @@ class DB:
             self.commit(S)
         else:
             logf.write(f"That record is already in data base ({S.date}).\n")
-
-
-#D=DB('Poland')

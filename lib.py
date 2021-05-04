@@ -4,6 +4,7 @@ from datetime import date
 import unicodedata
 import sqlite3
 import os
+import textwrap
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd

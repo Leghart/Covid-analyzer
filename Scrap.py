@@ -1,6 +1,12 @@
 from lib import *
 from Data_Base import DB
 
+
+
+def format_number(string):
+    return  " ".join(digit for digit in textwrap.wrap(str(string)[::-1], 3))[::-1]
+
+
 class Daily_Raport:
 
     def __init__(self,country):
@@ -32,7 +38,6 @@ class Daily_Raport:
             self.new_deaths=int(data[4].replace('+','').replace(',',''))
             self.total_rec=int(data[5].replace(',',''))
             self.active_cases=int(data[7].replace('+','').replace(',',''))
-            #self.critical=int(data[8].replace('+','').replace(',',''))
             self.tot=int(data[9].replace('+','').replace(',','')) #na 1M
             self.total_tests=int(data[11].replace(',',''))
             self.fatality_ratio=round(self.total_deaths/self.total_cases*100,2)
@@ -45,32 +50,30 @@ class Daily_Raport:
             print(f"Data wasn't uploaded on page yet ({self.country}).\n")
             exit(-1)
 
-    def get_old_data(self):
-        nowy_plik=open('tylko_polska.csv','w')
-        for filename in os.listdir('old_data'):
-           with open(os.path.join('old_data', filename), 'r') as f: # open in readonly mode
-              # do your stuff
+    def save_data_to_csv(self,ofile,nfile,country):
+        nowy_plik=open(nfile,'w')
+        for filename in os.listdir(ofile):
+           with open(os.path.join(ofile, filename), 'r') as f: # open in readonly mode
               plik=f.read()
               linie=plik.split('\n')
-              #for i in linie:
-              wynik=[s for s in linie if "Poland" in s]
+              wynik=[s for s in linie if country in s]
               print(wynik)
               nowy_plik.writelines(["%s\n" % item  for item in wynik])
 
     def show_raport(self):
         print(f'Country: {self.country}')
-        print(f'Total cases: {self.total_cases}')
-        print(f'New cases: {self.new_cases}')
-        print(f'Total deaths: {self.total_deaths}')
-        print(f'New deaths: {self.new_deaths}')
-        print(f'Total recoveries: {self.total_rec}')
-        print(f'Actice cases: {self.active_cases}')
-        print(f'Tot cases/1M: {self.tot}')
-        print(f'Total tests: {self.total_tests}')
+        print(f'New cases: {format_number(str(self.new_cases))}')
+        print(f'New deaths: {format_number(str(self.new_deaths))}')
+        print(f'Total cases: {format_number(str(self.total_cases))}')
+        print(f'Total deaths: {format_number(str(self.total_deaths))}')
+        print(f'Total recoveries: {format_number(str(self.total_rec))}')
+        print(f'Actice cases: {format_number(str(self.active_cases))}')
+        print(f'Tot cases/1M: {format_number(str(self.tot))}')
+        print(f'Fatality ratio: {format_number(str(self.fatality_ratio))}')
+        print(f'Total tests: {format_number(str(self.total_tests))}')
         print(f'Data recived: {self.date}')
-        print(f'Fatality ratio: {self.fatality_ratio}')
 
-    def show_raport_pl(self):
+    def raport_to_mail(self):
         From="Automatyczny Raport Wirusowy"
         subject=f'Raport z dnia: {self.date}'
         message ="""Wszystkie przypadki zachorowan: {}\n
@@ -82,7 +85,7 @@ class Daily_Raport:
         Ilość zmarłych na 1M: {}\n
         Współczynnik smiertelnosci: {}\n
         Wszystkie wykonane testy: {}
-        """.format(self.total_cases,self.new_cases,self.total_deaths,self.new_deaths,self.total_rec,self.active_cases,self.tot,self.fatality_ratio,self.total_cases)
+        """.format(format_number(str(self.total_cases)),format_number(str(self.new_cases)),format_number(str(self.total_deaths)),format_number(str(self.new_deaths)),format_number(str(self.total_rec)),format_number(str(self.active_cases)),format_number(str(self.tot)),format_number(str(self.fatality_ratio)),format_number(str(self.total_cases)))
 
         return 'Subject: {}\n\n{}'.format(subject,message.encode('ascii', 'ignore').decode('ascii'))
 
@@ -92,11 +95,10 @@ class Daily_Raport:
         passw=file.read().split(';')
         smtp_server="smtp.gmail.com"
         nadawca=passw[0]
-        #odbiorca=passw[1]
-        odbiorca='241516@student.pwr.edu.pl'
+        odbiorca=passw[1]
         haslo=passw[2]
 
-        message=self.show_raport_pl()
+        message=self.raport_to_mail()
 
         ssl_pol=ssl.create_default_context()
         with smtplib.SMTP_SSL(smtp_server,port,context=ssl_pol) as serwer:
@@ -104,27 +106,13 @@ class Daily_Raport:
             serwer.sendmail(nadawca,odbiorca,message)
 
 
+
+
 D=Daily_Raport('Poland')
+D.show_raport()
 W=DB('Poland')
 W.insert(D)
 D.send_mail()
-
-
-'''
-Country=['Poland']
-for con in Country:
-    D=Daily_Raport(con)
-    D.show_raport_pl()
-    W=DB(con)
-    W.insert(D)
-'''
-'''
-Country='Poland'
-D=Daily_Raport(Country)
-D.show_raport()
-W=DB(Country)
-W.insert(D)
-'''
 
 
 
