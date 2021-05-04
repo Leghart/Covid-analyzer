@@ -2,7 +2,7 @@
 * [General info](#general-info)
 * [Technologies](#technologies)
 * [Setup](#setup)
-* [PDD](#pdd)
+* [Periodic data download](#pdd)
 
 ## General info
 
