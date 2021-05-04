@@ -2,6 +2,7 @@
 * [General info](#general-info)
 * [Technologies](#technologies)
 * [Setup](#setup)
+* [PDD](#pdd)
 
 ## General info
 
@@ -10,6 +11,7 @@
 Project is created with:
 * BeautifulSoup
 * SQlite3
+* Sklearn
 
 ## Setup
 
@@ -18,4 +20,4 @@ If you want automatically download data you can use: Schedule Manager on Windows
 * Create file .bat and write there:
 "full_path_to_python" "full_path_to_Scrap.py"
 pause
-* Schedule your own datetime to scrap data (I used to 11 AM) using a file.bat
+* Schedule your own datetime to scrap data using a file.bat
