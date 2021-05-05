@@ -125,4 +125,10 @@ D = DailyRaport('Poland')
 D.show_raport()
 W = DB('Poland')
 W.insert(D)
-D.send_mail()
+#D.send_mail()
+
+
+W = DB('Poland')
+Pl = P(W)
+keys = ['New cases','New deaths']
+Pl.plot_predict(keys)

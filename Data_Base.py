@@ -1,11 +1,16 @@
 import sqlite3
 import pandas as pd
+import os
+#import scrap as S
 
 
 class DataBase:
 
     def __init__(self, country):
-        self.con = sqlite3.connect('Covid_Data.db')
+        #db_name='Covid_Data.db'
+        path='D:\PWR\Python\Covid analyzer\Covid_Data.db'
+
+        self.con = sqlite3.connect(path)
         self.cursor = self.con.cursor()
         self.country = country
 
@@ -33,6 +38,7 @@ class DataBase:
             self.con.commit()
             self.cursor.close()
             self.con.close()
+            print(f"Data was successfully committed ({S.date}).\n")
             logf.write(f"Data was successfully committed ({S.date}).\n")
             logf.close()
         except Exception:
@@ -62,6 +68,7 @@ class DataBase:
     def insert(self, S):
         logf = open('log.txt', 'a')
         file = open('raports.txt', 'a')
+
         if self.get_last_record_date() != S.date:
             self.cursor.execute("INSERT INTO " + self.country +
                                 " VALUES (?,?,?,?,?,?,?,?,?,?)",
@@ -69,7 +76,6 @@ class DataBase:
                                  S.new_deaths, S.total_deaths, S.total_rec,
                                  S.active_cases, S.tot, S.fatality_ratio,
                                  S.total_tests))
-            # file.write(str(self.country)+ ' ' +str(S.date)+' '+str(S.new_cases)+' '+str(S.total_cases)+' '+str(S.new_deaths)+' '+str(S.total_deaths)+' '+str(S.total_rec)+ ' '+str(S.active_cases)+' '+str(S.tot)+' '+str(S.fatality_ratio)+' '+str(S.total_tests)+'\n')
             file.write('{} {} {} {} {} {} {} {} {} {} {} \n'.format(
                 self.country, S.date, S.new_cases, S.total_cases,
                 S.new_deaths, S.total_deaths, S.total_rec, S.active_cases,

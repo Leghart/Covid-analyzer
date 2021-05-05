@@ -52,7 +52,7 @@ class Process:
         df = df.drop(columns=['Tot /1M', 'Total tests'])
         return df
 
-    def preprocessData(self, data, wyjscie, k=5):
+    def preprocessData(self, data, wyjscie, k):
         X, Y = [], []
         for i in range(len(data) - k - 1):
             x_i_mat = np.array(data[i:(i + k)])
@@ -127,7 +127,7 @@ class Process:
                 W_mod.append(min_idx[0][0])
             return W_mod
 
-    def Kohonen(self, X, klasy, alfa=0.5, il_iter=50, miara=2, wsp_alfa=2):
+    def Kohonen(self, X, klasy, alfa=0.5, il_iter=50, miara=3, wsp_alfa=2):
 
         srd = 1 / len(X) * sum(i for i in X)
         X_std = []
@@ -176,7 +176,7 @@ class Process:
         Xn = np.array(Xn)
 
         alfa = 0.5
-        miara = 3
+        miara=3
         C = self.Kohonen(X, liczba_klas, alfa, liczba_iter, miara, wsp_alfa=2)
 
         # ==== najdalej oddalone od siebie wzorce w zbiorach =====
@@ -215,12 +215,12 @@ class Process:
         return y_rad
 
     def plot_predict(self, keys):
-        dane = P.get_data()
+        dane = self.get_data()
 
         for i in keys:
             plt.figure(i)
-            X, y = P.preprocessData(dane, i, 100)
-            y_rad = P.RBF(X, y, 100, 10)
+            X, y = self.preprocessData(dane, i, 30)
+            y_rad = self.RBF(X, y, 100, 10)
             print(f'{i}: {int(y_rad[-1])}')
 
             t1 = range(len(y_rad))
@@ -231,9 +231,3 @@ class Process:
             plt.legend()
             plt.grid()
         plt.show()
-
-
-D = DB('Poland')
-P = Process(D)
-keys = ['Total cases']
-P.plot_predict(keys)
