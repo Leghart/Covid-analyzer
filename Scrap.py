@@ -6,7 +6,7 @@ import ssl
 import smtplib
 
 from data_base import DataBase as DB
-from processing import Process as P
+
 
 def format_number(string):
     return " ".join(digit for digit in textwrap.wrap(
@@ -74,7 +74,7 @@ class DailyRaport:
         print(f'Total recoveries: {format_number(str(self.total_rec))}')
         print(f'Actice cases: {format_number(str(self.active_cases))}')
         print(f'Tot cases/1M: {format_number(str(self.tot))}')
-        print(f'Fatality ratio: {format_number(str(self.fatality_ratio))}')
+        print(f'Fatality ratio: {str(self.fatality_ratio)}')
         print(f'Total tests: {format_number(str(self.total_tests))}')
         print(f'Data recived: {self.date}')
 
@@ -98,7 +98,7 @@ class DailyRaport:
                     format_number(str(self.total_rec)),
                     format_number(str(self.active_cases)),
                     format_number(str(self.tot)),
-                    format_number(str(self.fatality_ratio)),
+                    str(self.fatality_ratio),
                     format_number(str(self.total_cases)))
 
         return 'Subject: {}\n\n{}'.format(subject, message.encode(
@@ -119,16 +119,3 @@ class DailyRaport:
         with smtplib.SMTP_SSL(smtp_server, port, context=ssl_pol) as serwer:
             serwer.login(broadcaster, pass_)
             serwer.sendmail(broadcaster, receiver, message)
-
-
-D = DailyRaport('Poland')
-D.show_raport()
-W = DB('Poland')
-W.insert(D)
-#D.send_mail()
-
-
-W = DB('Poland')
-Pl = P(W)
-keys = ['New cases','New deaths']
-Pl.plot_predict(keys)
