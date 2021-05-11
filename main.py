@@ -1,27 +1,68 @@
 from scrap import DailyRaport
 from data_base import DataBase as DB
 from processing import Process as P
+
+import datetime
 import time
+import os
+import win32gui, win32con
 
 
+the_program_to_hide = win32gui.GetForegroundWindow()
+
+
+def show_term():
+    win32gui.ShowWindow(the_program_to_hide, win32con.SW_RESTORE)
+
+def hide_term():
+    win32gui.ShowWindow(the_program_to_hide , win32con.SW_HIDE)
+
+
+
+
+scrap_time = '11:15'
+update_time = '18:30'
+today = datetime.datetime.today()
+today_ = today.strftime('%d.%m.%Y')
 
 if __name__ == '__main__':
-    D = DailyRaport('Poland')
-    D.show_raport()
+    #hide_term()
+    FIRST = True
     W = DB('Poland')
-    W.insert(D)
-    #W.update(D)
-    #D.send_mail()
 
-    Pl = P(W)
-    keys = ['New cases','New deaths']
-    Pl.plot_predict(keys)
+    last_day_db = W.get_last_record_date()
 
+    while(True):
+        hour_now = datetime.datetime.now().hour
+        min_now = datetime.datetime.now().minute
+        time_now = str(hour_now) + ':' + str(min_now)
 
+        if time_now >= scrap_time and FIRST:
+            D = DailyRaport('Poland')
+            #show_term()
+            D.show_raport()
+            W.insert(D)
+            if last_day_db != today_:
+                W = DB('Poland')
+                Pl = P(W)
+                Pl.send_mail()
+            time.sleep(10)
+            #hide_term()
+            FIRST = False
 
+            keys = ['New cases','New deaths']
+            try:
+                Pl.plot_predict(keys)
+            except NameError:
+                pass
 
+        if time_now >= update_time:
+            #show_term()
+            D = DailyRaport('Poland')
+            W.update(D)
+            exit(0)
 
-
+        time.sleep(10*60)
 
 
 

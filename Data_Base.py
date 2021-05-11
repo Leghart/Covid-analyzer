@@ -1,14 +1,15 @@
 import sqlite3
 import pandas as pd
 import os
-#import scrap as S
 
 
 class DataBase:
 
     def __init__(self, country):
-        #db_name='Covid_Data.db'
-        path='D:\PWR\Python\Covid analyzer\Covid_Data.db'
+        db_name='Covid_Data.db'
+        direct_path=os.getcwd()
+        path='\\'.join([direct_path,db_name])
+
 
         self.con = sqlite3.connect(path)
         self.cursor = self.con.cursor()
@@ -32,12 +33,14 @@ class DataBase:
         else:
             print("successful database connection.\n")
 
+    def __del__(self):
+        self.cursor.close()
+        self.con.close()
+
     def commit(self, S):
         logf = open('log.txt', 'a')
         try:
             self.con.commit()
-            self.cursor.close()
-            self.con.close()
             print(f"Data was successfully committed ({S.date}).\n")
             logf.write(f"Data was successfully committed ({S.date}).\n")
             logf.close()
@@ -52,18 +55,6 @@ class DataBase:
         except Exception:
             last_date = None
         return last_date
-
-    def get_actual_data(self):
-        self.cursor.execute("SELECT * FROM " + self.country)
-        data = self.cursor.fetchall()
-
-        df = pd.DataFrame(list(data))
-        df = df.set_axis(['Date', 'New cases',
-                         'Total cases', 'New deaths', 'Total deaths,',
-                          'Total recovered', 'Active cases', 'Tot /1M',
-                          'Fatality ratio', 'Total_tests'], axis='columns')
-        df = df.drop(columns=['Data'])
-        return df
 
     def insert(self, S):
         logf = open('log.txt', 'a')
@@ -83,3 +74,22 @@ class DataBase:
             self.commit(S)
         else:
             logf.write(f"That record is already in data base ({S.date}).\n")
+
+    def update(self, S):
+        if self.get_last_record_date() == S.date:
+            sql_query = "UPDATE " + self.country + """ SET new_cases = ?,
+                        total_cases = ?, new_deaths = ?, total_deaths = ?,
+                        total_recovered = ?, active_cases = ?, tot_1M = ?,
+                        fatality_ratio = ?, total_tests = ?
+                        WHERE date = ? """
+            data = [S.new_cases, S.total_cases, S.new_deaths, S.total_deaths,
+                    S.total_rec, S.active_cases, S.tot, S.fatality_ratio,
+                    S.total_tests, S.date]
+            try:
+                self.cursor.execute(sql_query, data)
+                self.commit(S)
+                print("Update executed\n")
+            except sqlite3.Error as e:
+                print(f'Something was wrong!. Error num: {e}\n')
+
+    # def remove_record(self,day):

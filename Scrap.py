@@ -1,10 +1,7 @@
-import textwrap
 from bs4 import BeautifulSoup
 from requests import get
 from datetime import date
-import ssl
-import smtplib
-
+import textwrap
 from data_base import DataBase as DB
 
 
@@ -22,7 +19,6 @@ class DailyRaport:
         url = 'https://www.worldometers.info/coronavirus/#main_table'
         page = get(url)
         bs = BeautifulSoup(page.content, 'html.parser')
-        data = ''
 
         table_data = bs.find('table', id='main_table_countries_today')
 
@@ -77,45 +73,3 @@ class DailyRaport:
         print(f'Fatality ratio: {str(self.fatality_ratio)}')
         print(f'Total tests: {format_number(str(self.total_tests))}')
         print(f'Data recived: {self.date}')
-
-    def raport_to_mail(self):
-        From = "Automatyczny Raport Wirusowy"
-        subject = f'Raport z dnia: {self.date}'
-        message = """Wszystkie przypadki zachorowan: {}\n
-        Dzisiejsze zachorowania: {}\n
-        Wszystkie zgony: {}\n
-        Dzisiejsze zgony: {}\n
-        Wszyscy wyzdrowiali: {}\n
-        Aktywne przypadki: {}\n
-        Ilość zmarłych na 1M: {}\n
-        Współczynnik smiertelnosci: {}\n
-        Wszystkie wykonane testy: {}
-        """.format(
-                    format_number(str(self.total_cases)),
-                    format_number(str(self.new_cases)),
-                    format_number(str(self.total_deaths)),
-                    format_number(str(self.new_deaths)),
-                    format_number(str(self.total_rec)),
-                    format_number(str(self.active_cases)),
-                    format_number(str(self.tot)),
-                    str(self.fatality_ratio),
-                    format_number(str(self.total_cases)))
-
-        return 'Subject: {}\n\n{}'.format(subject, message.encode(
-                                    'ascii', 'ignore').decode('ascii'))
-
-    def send_mail(self):
-        port = 465
-        file = open('passwords')
-        passw = file.read().split(';')
-        smtp_server = "smtp.gmail.com"
-        broadcaster = passw[0]
-        receiver = passw[1]
-        pass_ = passw[2]
-
-        message = self.raport_to_mail()
-
-        ssl_pol = ssl.create_default_context()
-        with smtplib.SMTP_SSL(smtp_server, port, context=ssl_pol) as serwer:
-            serwer.login(broadcaster, pass_)
-            serwer.sendmail(broadcaster, receiver, message)

@@ -1,6 +1,9 @@
 import numpy as np
 import math
 import pandas as pd
+import textwrap
+import ssl
+import smtplib
 import matplotlib.pyplot as plt
 from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
@@ -10,6 +13,11 @@ from sklearn.model_selection import GridSearchCV
 
 
 from data_base import DataBase as DB
+
+
+def format_number(string):
+    return " ".join(digit for digit in textwrap.wrap(
+                                str(string)[::-1], 3))[::-1]
 
 
 class Process:
@@ -215,20 +223,85 @@ class Process:
 
         return y_rad
 
+    def predict(self,keys):
+        data = self.get_data()
+        pred=[]
+        for i in keys:
+            X, y = self.preprocessData(data, i, 30)
+            y_rad = self.RBF(X, y, 100, 10)
+            pred.append(y_rad)
+        return pred
+
     def plot_predict(self, keys):
         dane = self.get_data()
-
         for i in keys:
             plt.figure(i)
             X, y = self.preprocessData(dane, i, 30)
             y_rad = self.RBF(X, y, 100, 10)
-            print(f'{i}: {int(y_rad[-1])}')
-
             t1 = range(len(y_rad))
             t2 = range(len(y))
 
             plt.plot(t1, y_rad, label="Prediction")
             plt.plot(t2, y, label="Original data")
+            plt.xlabel("Days since the start of the pandemic")
             plt.legend()
+            plt.title('{}'.format(i))
             plt.grid()
-        plt.show()
+            plt.savefig('static/{}'.format(i))
+
+
+    def raport_to_mail(self):
+        _predict = self.predict(['New cases', 'New deaths'])
+        tommorow_cases = ((_predict[0][-1]))
+        tommorow_deaths = ((_predict[1][-1]))
+
+        tommorow_cases = int(tommorow_cases[0])
+        tommorow_deaths = int(tommorow_deaths[0])
+
+        From = "Automatyczny Raport Wirusowy"
+        subject = f'Raport z dnia: {self.dates[-1]}'
+        message = """
+        Dzisiejsze zachorowania: {}\n
+        Dzisiejsze zgony: {}\n
+        ==============================================
+        Wszystkie przypadki zachorowan: {}\n
+        Wszystkie zgony: {}\n
+        Wszyscy wyzdrowiali: {}\n
+        Aktywne przypadki: {}\n
+        Ilość zmarłych na 1M: {}\n
+        Współczynnik smiertelnosci: {}\n
+        Wszystkie wykonane testy: {}\n
+        ------------ Prognoza na jutro ----------------
+        Zachorowania: {}\n
+        Zgony: {}
+        """.format(
+                    format_number(str(self.new_cases[-1])),
+                    format_number(str(self.new_deaths[-1])),
+                    format_number(str(self.total_cases[-1])),
+                    format_number(str(self.total_deaths[-1])),
+                    format_number(str(self.total_rec[-1])),
+                    format_number(str(self.active_cases[-1])),
+                    format_number(str(self.tot[-1])),
+                    str(self.fatality_ratio[-1]),
+                    format_number(str(self.total_cases[-1])),
+                    format_number(str(tommorow_cases)),
+                    format_number(str(tommorow_deaths)))
+
+        return 'Subject: {}\n\n{}'.format(subject, message.encode(
+                                    'ascii', 'ignore').decode('ascii'))
+
+    def send_mail(self):
+        port = 465
+        file = open('passwords')
+        passw = file.read().split(';')
+        smtp_server = "smtp.gmail.com"
+        broadcaster = passw[0]
+        receiver = passw[1]
+        pass_ = passw[2]
+
+        message = self.raport_to_mail()
+
+        ssl_pol = ssl.create_default_context()
+        with smtplib.SMTP_SSL(smtp_server, port, context=ssl_pol) as serwer:
+            serwer.login(broadcaster, pass_)
+            serwer.sendmail(broadcaster, receiver, message)
