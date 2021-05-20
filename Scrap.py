@@ -50,7 +50,7 @@ class DailyRaport:
 
         except ValueError:
             print(f"Data wasn't uploaded on page yet ({self.country}).\n")
-            exit(-1)
+            #exit(-1)
 
     def save_data_to_csv(self, ofile, nfile, country):
         out_file = open(nfile, 'w')

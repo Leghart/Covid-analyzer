@@ -1,14 +1,33 @@
-from scrap import DailyRaport
+import win32gui, win32con
+from flask import Flask,render_template
+import logging
+import datetime
+import threading
+import time
+
 from data_base import DataBase as DB
 from processing import Process as P
-
-import datetime
-import time
-import os
-import win32gui, win32con
+from scrap import DailyRaport as DR
 
 
-the_program_to_hide = win32gui.GetForegroundWindow()
+app = Flask(__name__)
+
+
+@app.route("/")
+def main():
+    D = DB('Poland')
+    Pl = P(D)
+    last_update = D.get_last_record_date()
+    _predict = Pl.predict(['New cases', 'New deaths'])
+    tomorrow_cases = ((_predict[0][-1]))
+    tomorrow_deaths = ((_predict[1][-1]))
+
+    new_cases_pred = int(tomorrow_cases[0])
+    new_deaths_pred = int(tomorrow_deaths[0])
+
+    tomorrow_date = datetime.date.today() + datetime.timedelta(days=1)
+    return render_template('index.html', **locals())
+
 
 
 def show_term():
@@ -18,14 +37,12 @@ def hide_term():
     win32gui.ShowWindow(the_program_to_hide , win32con.SW_HIDE)
 
 
+def collect_data():
+    scrap_time = '11:15'
+    update_time = '18:30'
+    today = datetime.datetime.today()
+    today_ = today.strftime('%d.%m.%Y')
 
-
-scrap_time = '11:15'
-update_time = '18:30'
-today = datetime.datetime.today()
-today_ = today.strftime('%d.%m.%Y')
-
-if __name__ == '__main__':
     #hide_term()
     FIRST = True
     W = DB('Poland')
@@ -33,59 +50,51 @@ if __name__ == '__main__':
     last_day_db = W.get_last_record_date()
 
     while(True):
+        print('Wait for a next scrap')
         hour_now = datetime.datetime.now().hour
         min_now = datetime.datetime.now().minute
         time_now = str(hour_now) + ':' + str(min_now)
-
-        if time_now >= scrap_time and FIRST:
-            D = DailyRaport('Poland')
-            #show_term()
-            D.show_raport()
-            W.insert(D)
-            if last_day_db != today_:
-                W = DB('Poland')
+        try:
+            if time_now >= scrap_time and FIRST:
+                D = DR('Poland')
+                #show_term()
+                D.show_raport()
+                W.insert(D)
                 Pl = P(W)
-                Pl.send_mail()
-            time.sleep(10)
-            #hide_term()
-            FIRST = False
+                if last_day_db != today_:
+                    Pl.send_mail()
 
-            keys = ['New cases','New deaths']
-            try:
+                #hide_term()
+                FIRST = False
+                keys = ['New cases','New deaths']
+                Pl = P(W)
                 Pl.plot_predict(keys)
-            except NameError:
-                pass
+                _predict = Pl.predict(keys)
+                cases_pred= int((_predict[0][-1])[0])
+                deaths_pred = int((_predict[1][-1])[0])
 
-        if time_now >= update_time:
-            #show_term()
-            D = DailyRaport('Poland')
-            W.update(D)
-            exit(0)
+                tomorrow_date = datetime.date.today() + (
+                                datetime.timedelta(days=1))
+                plik = open('predykcje.txt', 'a', encoding='utf8')
+                pred = f"""Predykcja na {tomorrow_date}: zakażeń - {cases_pred}
+                         zgonów - {deaths_pred}\n"""
+                print(pred)
+                plik.write(pred)
+                plik.close()
+
+
+            if time_now >= update_time:
+                #show_term()
+                D = DailyRaport('Poland')
+                W.update(D)
+                exit(0)
+        except:
+            pass
 
         time.sleep(10*60)
 
 
-
-
-
-'''
-def get_vacc_data(self):
-    url='https://www.medonet.pl/zdrowie/zdrowie-dla-kazdego,zasieg-koronawirusa-covid-19--mapa-,artykul,43602150.html'
-    page=get(url)
-    bs=BeautifulSoup(page.content,'html.parser')
-    data=''
-
-    for i in bs.find_all('div',class_='inlineFrame'):
-        data+=str(i.get_text())+'\n'
-
-    data=[x for x in data.splitlines() if x]
-
-    nvacc=data[4].replace(' ','')
-    tvacc=data[1].replace(' ','')
-    ntests=data[7].replace(',','.')
-
-    self.new_vaccinated=int(nvacc.split(':')[1])
-    tmp_tests=ntests.split(':')[1]
-    n=tmp_tests.split(' ')
-    self.new_tests=float(n[1])*1000
-'''
+if __name__ == '__main__':
+    x = threading.Thread(target=collect_data)
+    x.start()
+    app.run(debug=True)

@@ -6,10 +6,9 @@ import os
 class DataBase:
 
     def __init__(self, country):
-        db_name='Covid_Data.db'
-        direct_path=os.getcwd()
+        db_name = 'Covid_Data.db'
+        direct_path = os.getcwd()
         path='\\'.join([direct_path,db_name])
-
 
         self.con = sqlite3.connect(path)
         self.cursor = self.con.cursor()
@@ -27,9 +26,6 @@ class DataBase:
                                 active_cases INT, tot_1M REAL,
                                 fatality_ratio REAL, total_tests INT)""")
 
-            logf = open("log.txt", "a")
-            logf.write(f'Table not existing. Created table: {self.country}.\n')
-            logf.close()
         else:
             print("successful database connection.\n")
 
@@ -38,15 +34,11 @@ class DataBase:
         self.con.close()
 
     def commit(self, S):
-        logf = open('log.txt', 'a')
         try:
             self.con.commit()
             print(f"Data was successfully committed ({S.date}).\n")
-            logf.write(f"Data was successfully committed ({S.date}).\n")
-            logf.close()
         except Exception:
-            logf.write("Data coudn't be commit.\n")
-            logf.close()
+            print("Data coudn't be commit.\n")
 
     def get_last_record_date(self):
         self.cursor.execute("SELECT date FROM " + self.country)
@@ -57,9 +49,6 @@ class DataBase:
         return last_date
 
     def insert(self, S):
-        logf = open('log.txt', 'a')
-        file = open('raports.txt', 'a')
-
         if self.get_last_record_date() != S.date:
             self.cursor.execute("INSERT INTO " + self.country +
                                 " VALUES (?,?,?,?,?,?,?,?,?,?)",
@@ -67,13 +56,13 @@ class DataBase:
                                  S.new_deaths, S.total_deaths, S.total_rec,
                                  S.active_cases, S.tot, S.fatality_ratio,
                                  S.total_tests))
-            file.write('{} {} {} {} {} {} {} {} {} {} {} \n'.format(
-                self.country, S.date, S.new_cases, S.total_cases,
-                S.new_deaths, S.total_deaths, S.total_rec, S.active_cases,
-                S.tot, S.fatality_ratio, S.total_tests))
+            #file.write('{} {} {} {} {} {} {} {} {} {} {} \n'.format(
+            #    self.country, S.date, S.new_cases, S.total_cases,
+            #    S.new_deaths, S.total_deaths, S.total_rec, S.active_cases,
+            #    S.tot, S.fatality_ratio, S.total_tests))
             self.commit(S)
         else:
-            logf.write(f"That record is already in data base ({S.date}).\n")
+            print(f"That record is already in data base ({S.date}).\n")
 
     def update(self, S):
         if self.get_last_record_date() == S.date:

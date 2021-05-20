@@ -5,12 +5,12 @@ import textwrap
 import ssl
 import smtplib
 import matplotlib.pyplot as plt
+
 from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import GridSearchCV
-
 
 from data_base import DataBase as DB
 
@@ -71,7 +71,7 @@ class Process:
             Y.append(y_i)
         return np.array(X), np.array(Y)
 
-    def predix(self, key):
+    def mlp_regress(self, key):
         X, y = self.preprocessData(self.get_data(), key)
         X = X.astype(np.int)
         y = y.astype(np.int)
@@ -106,24 +106,6 @@ class Process:
 
     def WybMiar(self, X_std, W_rep, miara, klasy):
         W_mod = []
-        if miara == 1:
-            for i in range(len(X_std)):
-                p_max = []
-                for j in range(klasy):
-                    p_max.append(np.dot(W_rep[j], X_std[i]))
-                max_idx = np.where(p_max == np.amax(p_max))
-                W_mod.append(max_idx[0][0])
-            return W_mod
-
-        if miara == 2:
-            for i in range(len(X_std)):
-                p_min = []
-                for j in range(klasy):
-                    p_min.append(np.linalg.norm(W_rep[j] - X_std[i]))
-                min_idx = np.where(p_min == np.amin(p_min))
-                W_mod.append(min_idx[0][0])
-            return W_mod
-
         if miara == 3:
             for i in range(len(X_std)):
                 p_min = []
@@ -136,13 +118,11 @@ class Process:
                 W_mod.append(min_idx[0][0])
             return W_mod
 
-    def Kohonen(self, X, klasy, alfa=0.5, il_iter=50, miara=3, wsp_alfa=2):
+    def Kohonen(self, X, klasy, alfa=0.5, il_iter=100, miara=3, wsp_alfa=2):
+        srd = sum(i for i in X) / len(X)
 
-        srd = 1 / len(X) * sum(i for i in X)
-        X_std = []
-        for i in range(len(X)):
-            X_std.append((srd - X[i]) / np.linalg.norm(X[i]))
-        X_std = np.array(X_std)
+        X_std = np.array([(srd - X[i]) / np.linalg.norm(X[i])
+                            for i in range(len(X))])
 
         gen = np.random.RandomState(100)
         W_rep = []
@@ -167,33 +147,22 @@ class Process:
     # ====================== Wybor wspolczynnika uczenia ===============
             C1 = 1.5
             C2 = 1.7
-            if wsp_alfa == 1:  # liniowe
-                alfa_k = alfa * (il_iter - iter_k) / il_iter
             if wsp_alfa == 2:  # wykladnicze
                 alfa_k = alfa * math.exp(-C1 * iter_k)
-            if wsp_alfa == 3:  # hiperboliczne
-                alfa_k = C1 / (C2 + iter_k)
+
         return W_rep
 
+
     def RBF(self, X, y, liczba_klas, scaler):
-        liczba_iter = 50
+        srd = sum(i for i in X) / len(X)  #srodek ciezkosci
+        Xn = np.array([(srd - X[i]) / np.linalg.norm(X[i])
+                        for i in range(len(X))])
 
-        srd = 1 / len(X) * sum(i for i in X)
-        Xn = []
-        for i in range(len(X)):
-            Xn.append((srd - X[i]) / np.linalg.norm(X[i]))
-        Xn = np.array(Xn)
-
-        alfa = 0.5
-        miara=3
-        C = self.Kohonen(X, liczba_klas, alfa, liczba_iter, miara, wsp_alfa=2)
+        C = self.Kohonen(X, liczba_klas)
 
         # ==== najdalej oddalone od siebie wzorce w zbiorach =====
-        S = []
-        for i in range(len(Xn)):
-            for j in range(len(Xn)):
-                S.append(np.linalg.norm(Xn[i] - Xn[j]))
-        S = max(S)
+        N = range(len(Xn))
+        S = max([np.linalg.norm(Xn[i] - Xn[j]) for i in N for j in N])
 
         # ============ promien funkcji phi ================
         r = S / scaler
@@ -245,10 +214,9 @@ class Process:
             plt.plot(t2, y, label="Original data")
             plt.xlabel("Days since the start of the pandemic")
             plt.legend()
-            plt.title('{}'.format(i))
+            plt.title('{} ({})'.format(i,self.dates[-1]))
             plt.grid()
             plt.savefig('static/{}'.format(i))
-
 
     def raport_to_mail(self):
         _predict = self.predict(['New cases', 'New deaths'])
@@ -305,3 +273,15 @@ class Process:
         with smtplib.SMTP_SSL(smtp_server, port, context=ssl_pol) as serwer:
             serwer.login(broadcaster, pass_)
             serwer.sendmail(broadcaster, receiver, message)
+
+
+D=DB('Poland')
+P=Process(D)
+_predict = P.predict(['New cases', 'New deaths'])
+tomorrow_cases = ((_predict[0][-1]))
+tomorrow_deaths = ((_predict[1][-1]))
+
+new_cases_pred = int(tomorrow_cases[0])
+new_deaths_pred = int(tomorrow_deaths[0])
+print(new_cases_pred)
+print(new_deaths_pred)
