@@ -2,6 +2,7 @@ import numpy as np
 import math
 import pandas as pd
 import textwrap
+import os
 import ssl
 import smtplib
 import matplotlib.pyplot as plt
@@ -21,6 +22,10 @@ def format_number(string):
 
 
 class Process:
+
+    path = os.path.dirname(os.path.abspath(__file__))
+    pred_dict = {}
+
     def __init__(self, DB):
         DB.cursor.execute('SELECT * FROM ' + DB.country)
         raw_data = DB.cursor.fetchall()
@@ -49,6 +54,9 @@ class Process:
             self.fatality_ratio.append(i[8])
             self.total_tests.append(i[9])
 
+        self.cases_pred = 0
+        self.deaths_pred = 0
+
     def get_data(self):
         new_data = np.arange(len(self.dates))
         d = {'Date': new_data, 'Total cases': self.total_cases,
@@ -61,7 +69,8 @@ class Process:
         df = df.drop(columns=['Tot /1M', 'Total tests'])
         return df
 
-    def preprocessData(self, data, wyjscie, k):
+    @staticmethod
+    def preprocessData(data, wyjscie, k):
         X, Y = [], []
         for i in range(len(data) - k - 1):
             x_i_mat = np.array(data[i:(i + k)])
@@ -72,7 +81,7 @@ class Process:
         return np.array(X), np.array(Y)
 
     def mlp_regress(self, key):
-        X, y = self.preprocessData(self.get_data(), key)
+        X, y = Process.preprocessData(self.get_data(), key)
         X = X.astype(np.int)
         y = y.astype(np.int)
         y = np.ravel(y)
@@ -196,17 +205,21 @@ class Process:
         data = self.get_data()
         pred=[]
         for i in keys:
-            X, y = self.preprocessData(data, i, 30)
+            X, y = Process.preprocessData(data, i, 30)
             y_rad = self.RBF(X, y, 100, 10)
             pred.append(y_rad)
         return pred
 
-    def plot_predict(self, keys):
-        dane = self.get_data()
+    def save_plot_prediction(self, keys):
+        data = self.get_data()
+
         for i in keys:
             plt.figure(i)
-            X, y = self.preprocessData(dane, i, 30)
+            X, y = Process.preprocessData(data, i, 30)
             y_rad = self.RBF(X, y, 100, 10)
+
+            Process.pred_dict[i] = int(y_rad[-1])
+
             t1 = range(len(y_rad))
             t2 = range(len(y))
 
@@ -216,15 +229,30 @@ class Process:
             plt.legend()
             plt.title('{} ({})'.format(i,self.dates[-1]))
             plt.grid()
-            plt.savefig('static/{}'.format(i))
+
+            full_path = Process.path + '\static\{}.png'.format(i)
+            if os.path.isfile(full_path):
+                os.remove(full_path)
+
+            plt.savefig(Process.path + '\static/{}'.format(i))
+
+    def save_predicion_to_txt(self, date, file):
+        text = '''Prediction for {}: new cases: {}
+                           new deaths: {}'''.format(date,
+                                        Process.pred_dict['New cases'],
+                                        Process.pred_dict['New deaths'])
+        with open(file, 'a', encoding='utf-8') as f:
+            f.write(text)
+
+
 
     def raport_to_mail(self):
         _predict = self.predict(['New cases', 'New deaths'])
-        tommorow_cases = ((_predict[0][-1]))
-        tommorow_deaths = ((_predict[1][-1]))
+        tomorrow_cases = ((_predict[0][-1]))
+        tomorrow_deaths = ((_predict[1][-1]))
 
-        tommorow_cases = int(tommorow_cases[0])
-        tommorow_deaths = int(tommorow_deaths[0])
+        tomorrow_cases = int(tomorrow_cases[0])
+        tomorrow_deaths = int(tomorrow_deaths[0])
 
         From = "Automatyczny Raport Wirusowy"
         subject = f'Raport z dnia: {self.dates[-1]}'
@@ -252,8 +280,8 @@ class Process:
                     format_number(str(self.tot[-1])),
                     str(self.fatality_ratio[-1]),
                     format_number(str(self.total_cases[-1])),
-                    format_number(str(tommorow_cases)),
-                    format_number(str(tommorow_deaths)))
+                    format_number(str(tomorrow_cases)),
+                    format_number(str(tomorrow_deaths)))
 
         return 'Subject: {}\n\n{}'.format(subject, message.encode(
                                     'ascii', 'ignore').decode('ascii'))
@@ -273,15 +301,3 @@ class Process:
         with smtplib.SMTP_SSL(smtp_server, port, context=ssl_pol) as serwer:
             serwer.login(broadcaster, pass_)
             serwer.sendmail(broadcaster, receiver, message)
-
-
-D=DB('Poland')
-P=Process(D)
-_predict = P.predict(['New cases', 'New deaths'])
-tomorrow_cases = ((_predict[0][-1]))
-tomorrow_deaths = ((_predict[1][-1]))
-
-new_cases_pred = int(tomorrow_cases[0])
-new_deaths_pred = int(tomorrow_deaths[0])
-print(new_cases_pred)
-print(new_deaths_pred)

@@ -16,11 +16,11 @@
   <a href = "https://www.worldometers.info/" target = "_blank" title = "original data">
   link
   </a>
-  and thenI use machine learning to predict a new cases for future. Currently it's simple version of project so
+  and then, I use machine learning to predict a new cases for future. Currently it's simple version of project so
   I can only predict one day. That site is divided into 4 main sections, the first is what you are reading right now, second
-  section presents a table of all data I collected. There are several columns that contain the most important information for
+  section presents a table of last 10 records I collected. There are several columns that contain the most important information for
   example: new cases of infection, new deaths, total number of cases, total number of deaths, etc. The third section contains graphs of data with
-  prediction which I made. It focuses only 2, in my opinion, the most important points that should be predicted. The last
+  prediction which I made. It focuses the most important points that should be predicted. The last
   section will tell you what could will happen tomorrow. This page is updated automatically  at 6 p.m. every day.
   <p> Last update: {{ last_update }} </p>
 
@@ -28,12 +28,11 @@
 
   <h2>  Images of cases with predictions  </h2>
 
-  <img src = "/static/New cases.png" alt = 'New cases' > <img src = "/static/New deaths.png" alt = 'New deaths'>
+  <img src = "static/New cases.png" alt = 'New cases' > <img src = "static/New deaths.png" alt = 'New deaths'>
 
-  <h2>  Prediction for future </h2>
-
-
-
+  <h2>  Prediction for future ({{tomorrow_date}})</h2>
+  Predicted new cases of infection for tomorrow: {{new_cases_pred}} <br/>
+  Predicted new deaths for tomorrow: {{new_deaths_pred}}<br/>
+  All forecasts are burdened with a large error resulting from the adopted prediction method.
 </body>
-
 </html>

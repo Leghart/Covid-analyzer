@@ -12,7 +12,7 @@ def format_number(string):
 
 class DailyRaport:
 
-    def __init__(self, country):
+    def __init__(self, country='Poland'):
         self.get_actual_data(country)
 
     def get_actual_data(self, country):
@@ -50,7 +50,7 @@ class DailyRaport:
 
         except ValueError:
             print(f"Data wasn't uploaded on page yet ({self.country}).\n")
-            #exit(-1)
+
 
     def save_data_to_csv(self, ofile, nfile, country):
         out_file = open(nfile, 'w')

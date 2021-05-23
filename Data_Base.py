@@ -5,9 +5,10 @@ import os
 
 class DataBase:
 
-    def __init__(self, country):
+    def __init__(self, country='Poland'):
         db_name = 'Covid_Data.db'
-        direct_path = os.getcwd()
+        #direct_path = os.getcwd()
+        direct_path = os.path.dirname(os.path.abspath(__file__))
         path='\\'.join([direct_path,db_name])
 
         self.con = sqlite3.connect(path)
@@ -49,23 +50,15 @@ class DataBase:
         return last_date
 
     def insert(self, S):
-        if self.get_last_record_date() != S.date:
-            self.cursor.execute("INSERT INTO " + self.country +
-                                " VALUES (?,?,?,?,?,?,?,?,?,?)",
-                                (S.date, S.new_cases, S.total_cases,
-                                 S.new_deaths, S.total_deaths, S.total_rec,
-                                 S.active_cases, S.tot, S.fatality_ratio,
-                                 S.total_tests))
-            #file.write('{} {} {} {} {} {} {} {} {} {} {} \n'.format(
-            #    self.country, S.date, S.new_cases, S.total_cases,
-            #    S.new_deaths, S.total_deaths, S.total_rec, S.active_cases,
-            #    S.tot, S.fatality_ratio, S.total_tests))
-            self.commit(S)
-        else:
-            print(f"That record is already in data base ({S.date}).\n")
+        self.cursor.execute("INSERT INTO " + self.country +
+                            " VALUES (?,?,?,?,?,?,?,?,?,?)",
+                            (S.date, S.new_cases, S.total_cases,
+                             S.new_deaths, S.total_deaths, S.total_rec,
+                             S.active_cases, S.tot, S.fatality_ratio,
+                             S.total_tests))
+        self.commit(S)
 
     def update(self, S):
-        if self.get_last_record_date() == S.date:
             sql_query = "UPDATE " + self.country + """ SET new_cases = ?,
                         total_cases = ?, new_deaths = ?, total_deaths = ?,
                         total_recovered = ?, active_cases = ?, tot_1M = ?,

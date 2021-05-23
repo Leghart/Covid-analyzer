@@ -18,12 +18,9 @@ def main():
     D = DB('Poland')
     Pl = P(D)
     last_update = D.get_last_record_date()
-    _predict = Pl.predict(['New cases', 'New deaths'])
-    tomorrow_cases = ((_predict[0][-1]))
-    tomorrow_deaths = ((_predict[1][-1]))
 
-    new_cases_pred = int(tomorrow_cases[0])
-    new_deaths_pred = int(tomorrow_deaths[0])
+    new_cases_pred = Pl.pred_dict['New cases']
+    new_deaths_pred = Pl.pred_dict['New deaths']
 
     tomorrow_date = datetime.date.today() + datetime.timedelta(days=1)
     return render_template('index.html', **locals())
@@ -45,8 +42,8 @@ def collect_data():
 
     #hide_term()
     FIRST = True
+    keys = ['New cases','New deaths']
     W = DB('Poland')
-
     last_day_db = W.get_last_record_date()
 
     while(True):
@@ -57,37 +54,30 @@ def collect_data():
         try:
             if time_now >= scrap_time and FIRST:
                 D = DR('Poland')
-                #show_term()
                 D.show_raport()
-                W.insert(D)
+
+                if W.get_last_record_date() != today_:
+                    W.insert(D)
+                else:
+                    print(f"That record is already in data base ({today_}).\n")
+
                 Pl = P(W)
                 if last_day_db != today_:
                     Pl.send_mail()
 
                 #hide_term()
-                FIRST = False
-                keys = ['New cases','New deaths']
-                Pl = P(W)
-                Pl.plot_predict(keys)
-                _predict = Pl.predict(keys)
-                cases_pred= int((_predict[0][-1])[0])
-                deaths_pred = int((_predict[1][-1])[0])
-
+                #FIRST = False
+                Pl.save_plot_prediction(keys)
                 tomorrow_date = datetime.date.today() + (
                                 datetime.timedelta(days=1))
-                plik = open('predykcje.txt', 'a', encoding='utf8')
-                pred = f"""Predykcja na {tomorrow_date}: zakażeń - {cases_pred}
-                         zgonów - {deaths_pred}\n"""
-                print(pred)
-                plik.write(pred)
-                plik.close()
-
+                Pl.save_predicion_to_txt(tomorrow_date, Pl.path + '\predykcje.txt' )
 
             if time_now >= update_time:
                 #show_term()
                 D = DailyRaport('Poland')
-                W.update(D)
-                exit(0)
+                if W.get_last_record_date() == W.date:
+                    W.update(D)
+                    return 0
         except:
             pass
 
@@ -95,6 +85,7 @@ def collect_data():
 
 
 if __name__ == '__main__':
-    x = threading.Thread(target=collect_data)
-    x.start()
-    app.run(debug=True)
+    #x = threading.Thread(target=collect_data)
+    #x.start()
+    #app.run(debug=True)
+    collect_data()
