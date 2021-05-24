@@ -22,7 +22,6 @@ def format_number(string):
 
 class Process:
     path = os.path.dirname(os.path.abspath(__file__))
-    pred_dict = {}
 
     def __init__(self, DB):
         DB.cursor.execute('SELECT * FROM ' + DB.country)
@@ -55,6 +54,17 @@ class Process:
         self.cases_pred = 0
         self.deaths_pred = 0
 
+    @staticmethod
+    def preprocessData(data, output, k):
+        X, Y = [], []
+        for i in range(len(data) - k - 1):
+            x_i_mat = np.array(data[i:(i + k)])
+            x_i = x_i_mat.reshape(x_i_mat.shape[0] * x_i_mat.shape[1])
+            y_i = np.array(data[(i + k):(i + k + 1)][output])
+            X.append(x_i)
+            Y.append(y_i)
+        return np.array(X), np.array(Y)
+
     def get_data(self):
         new_data = np.arange(len(self.dates))
         d = {'Date': new_data, 'Total cases': self.total_cases,
@@ -66,17 +76,6 @@ class Process:
         df = pd.DataFrame(data=d)
         df = df.drop(columns=['Tot /1M', 'Total tests'])
         return df
-
-    @staticmethod
-    def preprocessData(data, wyjscie, k):
-        X, Y = [], []
-        for i in range(len(data) - k - 1):
-            x_i_mat = np.array(data[i:(i + k)])
-            x_i = x_i_mat.reshape(x_i_mat.shape[0] * x_i_mat.shape[1])
-            y_i = np.array(data[(i + k):(i + k + 1)][wyjscie])
-            X.append(x_i)
-            Y.append(y_i)
-        return np.array(X), np.array(Y)
 
     def mlp_regress(self, key):
         X, y = Process.preprocessData(self.get_data(), key)
@@ -175,15 +174,16 @@ class Process:
 
         return y_rad
 
-    def save_plot_prediction(self, keys):
+    def RBF_prediction(self, keys, *args, **kwargs):
         data = self.get_data()
+        pred_dict = {}
         for i in keys:
             plt.figure(i)
             X, y = Process.preprocessData(data, i, 30)
             print('Calculating prediction for {}'.format(i))
             y_rad = self.RBF(X, y, 100, 10)
 
-            Process.pred_dict[i] = int(y_rad[-1])
+            pred_dict[i] = int(y_rad[-1])
 
             t1 = range(len(y_rad))
             t2 = range(len(y))
@@ -201,20 +201,20 @@ class Process:
 
             plt.savefig(Process.path + '\static/{}'.format(i))
 
+        self.cases_pred = pred_dict['New cases']
+        self.deaths_pred = pred_dict['New deaths']
+
     def save_predicion_to_txt(self, date, file):
         text = '''Prediction for {}: new cases: {}
                            new deaths: {}\n'''.format(date,
-                                        Process.pred_dict['New cases'],
-                                        Process.pred_dict['New deaths'])
+                                        self.cases_pred,
+                                        self.deaths_pred)
         with open(file, 'a', encoding='utf-8') as f:
             f.write(text)
         print(text)
         print('Successfully written to file!')
 
     def raport_to_mail(self):
-        tomorrow_cases = Process.pred_dict['New cases']
-        tomorrow_deaths = Process.pred_dict['New deaths']
-
         From = "Automatyczny Raport Wirusowy"
         subject = f'Raport z dnia: {self.dates[-1]}'
         message = """
@@ -241,8 +241,8 @@ class Process:
                     format_number(str(self.tot[-1])),
                     str(self.fatality_ratio[-1]),
                     format_number(str(self.total_cases[-1])),
-                    format_number(str(tomorrow_cases)),
-                    format_number(str(tomorrow_deaths)))
+                    format_number(str(self.cases_pred)),
+                    format_number(str(self.deaths_pred)))
         return 'Subject: {}\n\n{}'.format(subject, message.encode(
                                     'ascii', 'ignore').decode('ascii'))
 
@@ -265,12 +265,3 @@ class Process:
             print('Mail was sent!')
         except Exception as e:
             print('Error:', e)
-
-'''
-D = DB()
-P = Process(D)
-keys = ['New cases', 'New deaths']
-P.save_plot_prediction(keys)
-print(P.pred_dict['New cases'])
-print(P.pred_dict['New deaths'])
-'''
