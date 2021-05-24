@@ -3,6 +3,7 @@ from flask import Flask,render_template
 import logging
 import datetime
 import threading
+import os
 import time
 
 from data_base import DataBase as DB
@@ -19,6 +20,7 @@ def main():
     Pl = P(D)
     last_update = D.get_last_record_date()
 
+    # TUTAJ SA PROBLEMY BO NIE MA JESZCZE PREDYKCJI
     new_cases_pred = Pl.pred_dict['New cases']
     new_deaths_pred = Pl.pred_dict['New deaths']
 
@@ -40,45 +42,42 @@ def collect_data():
     today = datetime.datetime.today()
     today_ = today.strftime('%d.%m.%Y')
 
-    #hide_term()
-    FIRST = True
     keys = ['New cases','New deaths']
     W = DB('Poland')
     last_day_db = W.get_last_record_date()
+    message = 'Wait for a next scrap...'
 
     while(True):
-        print('Wait for a next scrap')
+        print(message)
         hour_now = datetime.datetime.now().hour
         min_now = datetime.datetime.now().minute
         time_now = str(hour_now) + ':' + str(min_now)
         try:
-            if time_now >= scrap_time and FIRST:
+            if time_now >= scrap_time and W.get_last_record_date() != today_:
+                os.system('cls')
                 D = DR('Poland')
                 D.show_raport()
-
-                if W.get_last_record_date() != today_:
-                    W.insert(D)
-                else:
-                    print(f"That record is already in data base ({today_}).\n")
-
+                W.insert(D)
                 Pl = P(W)
-                if last_day_db != today_:
-                    Pl.send_mail()
-
-                #hide_term()
-                #FIRST = False
                 Pl.save_plot_prediction(keys)
+                Pl.send_mail(Pl.path + '\passwords')
                 tomorrow_date = datetime.date.today() + (
                                 datetime.timedelta(days=1))
-                Pl.save_predicion_to_txt(tomorrow_date, Pl.path + '\predykcje.txt' )
-
+                Pl.save_predicion_to_txt(tomorrow_date,
+                                        Pl.path + '\predykcje.txt')
+                message = 'Data was already downloaded.'
+            else:
+                message = 'Data is in a database.'
+            return 0
+            '''
             if time_now >= update_time:
-                #show_term()
-                D = DailyRaport('Poland')
-                if W.get_last_record_date() == W.date:
+                D = DR('Poland')
+                if W.get_last_record_date() == D.date:
                     W.update(D)
                     return 0
-        except:
+            '''
+        except Exception as e:
+            print("Error: ", e)
             pass
 
         time.sleep(10*60)
@@ -87,5 +86,6 @@ def collect_data():
 if __name__ == '__main__':
     #x = threading.Thread(target=collect_data)
     #x.start()
-    #app.run(debug=True)
     collect_data()
+    app.run(debug=True)
+    #collect_data()

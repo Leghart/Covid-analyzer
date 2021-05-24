@@ -7,7 +7,6 @@ class DataBase:
 
     def __init__(self, country='Poland'):
         db_name = 'Covid_Data.db'
-        #direct_path = os.getcwd()
         direct_path = os.path.dirname(os.path.abspath(__file__))
         path='\\'.join([direct_path,db_name])
 

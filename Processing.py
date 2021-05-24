@@ -20,9 +20,7 @@ def format_number(string):
     return " ".join(digit for digit in textwrap.wrap(
                                 str(string)[::-1], 3))[::-1]
 
-
 class Process:
-
     path = os.path.dirname(os.path.abspath(__file__))
     pred_dict = {}
 
@@ -113,70 +111,47 @@ class Process:
         plt.legend()
         plt.show()
 
-    def WybMiar(self, X_std, W_rep, miara, klasy):
-        W_mod = []
-        if miara == 3:
-            for i in range(len(X_std)):
-                p_min = []
-                for j in range(klasy):
-                    sum_tmp = 0
-                    for k in range(len([0])):
-                        sum_tmp += abs(W_rep[j][k] - X_std[i][k])
-                    p_min.append(math.sqrt(sum_tmp))
-                min_idx = np.where(p_min == np.amin(p_min))
-                W_mod.append(min_idx[0][0])
-            return W_mod
-
-    def Kohonen(self, X, klasy, alfa=0.5, il_iter=100, miara=3, wsp_alfa=2):
+    def Kohonen(self, X, klasy, alfa=0.5, il_iter=100):
         srd = sum(i for i in X) / len(X)
 
         X_std = np.array([(srd - X[i]) / np.linalg.norm(X[i])
                             for i in range(len(X))])
-
         gen = np.random.RandomState(100)
         W_rep = []
-
         for i in range(klasy):
             wtemp = gen.normal(loc=0.0, scale=0.01, size=len(X[0]))
             W_rep.append(wtemp / np.linalg.norm(wtemp))
 
         alfa_k = alfa
-    # =============== wybor miary =================
+        W_mod = []
         for iter_k in range(il_iter):
-            W_mod = self.WybMiar(X_std, W_rep, miara, klasy)
-            W_mod_indx = np.array(W_mod)
-
-    # ============= modyfikacja wektorów reprezentantów=================
+            W_mod = []
             for i in range(len(X_std)):
-                W_rep[W_mod_indx[i]] = W_rep[W_mod_indx[i]] + alfa_k * (
-                                        X_std[i] - W_rep[W_mod_indx[i]])
-                W_rep[W_mod_indx[i]] = W_rep[W_mod_indx[i]] / (
-                                        np.linalg.norm(W_rep[W_mod_indx[i]]))
+                p_min = [np.linalg.norm(W_rep[j] - X_std[i]) for j in range(klasy)]
+                min_idx = np.where(p_min == np.amin(p_min))
+                W_mod.append(min_idx[0][0])
+            W_mod = np.array(W_mod)
 
-    # ====================== Wybor wspolczynnika uczenia ===============
-            C1 = 1.5
-            C2 = 1.7
-            if wsp_alfa == 2:  # wykladnicze
-                alfa_k = alfa * math.exp(-C1 * iter_k)
+            for i in range(len(X_std)):
+                W_rep[W_mod[i]] = ((W_rep[W_mod[i]] + alfa_k * (
+                                        X_std[i] - W_rep[W_mod[i]])) /
+                                        np.linalg.norm(W_rep[W_mod[i]]))
+            alfa_k = alfa * math.exp(-1.5 * iter_k)
 
         return W_rep
 
-
     def RBF(self, X, y, liczba_klas, scaler):
-        srd = sum(i for i in X) / len(X)  #srodek ciezkosci
+        srd = sum(i for i in X) / len(X)
         Xn = np.array([(srd - X[i]) / np.linalg.norm(X[i])
                         for i in range(len(X))])
 
         C = self.Kohonen(X, liczba_klas)
 
-        # ==== najdalej oddalone od siebie wzorce w zbiorach =====
         N = range(len(Xn))
         S = max([np.linalg.norm(Xn[i] - Xn[j]) for i in N for j in N])
 
-        # ============ promien funkcji phi ================
         r = S / scaler
 
-        # ===== Wyznaczanie macierzy PHI ================
         PHI = []
         for N in range(len(Xn)):
             pom = []
@@ -190,7 +165,6 @@ class Process:
         cz2 = np.dot(np.transpose(PHI), y)
         w = np.dot(cz1, cz2)
 
-        # ============== Wyjscie sieci =====================
         y_rad = []
         for i in range(len(Xn)):
             tmp = 0
@@ -201,21 +175,12 @@ class Process:
 
         return y_rad
 
-    def predict(self,keys):
-        data = self.get_data()
-        pred=[]
-        for i in keys:
-            X, y = Process.preprocessData(data, i, 30)
-            y_rad = self.RBF(X, y, 100, 10)
-            pred.append(y_rad)
-        return pred
-
     def save_plot_prediction(self, keys):
         data = self.get_data()
-
         for i in keys:
             plt.figure(i)
             X, y = Process.preprocessData(data, i, 30)
+            print('Calculating prediction for {}'.format(i))
             y_rad = self.RBF(X, y, 100, 10)
 
             Process.pred_dict[i] = int(y_rad[-1])
@@ -238,21 +203,17 @@ class Process:
 
     def save_predicion_to_txt(self, date, file):
         text = '''Prediction for {}: new cases: {}
-                           new deaths: {}'''.format(date,
+                           new deaths: {}\n'''.format(date,
                                         Process.pred_dict['New cases'],
                                         Process.pred_dict['New deaths'])
         with open(file, 'a', encoding='utf-8') as f:
             f.write(text)
-
-
+        print(text)
+        print('Successfully written to file!')
 
     def raport_to_mail(self):
-        _predict = self.predict(['New cases', 'New deaths'])
-        tomorrow_cases = ((_predict[0][-1]))
-        tomorrow_deaths = ((_predict[1][-1]))
-
-        tomorrow_cases = int(tomorrow_cases[0])
-        tomorrow_deaths = int(tomorrow_deaths[0])
+        tomorrow_cases = Process.pred_dict['New cases']
+        tomorrow_deaths = Process.pred_dict['New deaths']
 
         From = "Automatyczny Raport Wirusowy"
         subject = f'Raport z dnia: {self.dates[-1]}'
@@ -282,22 +243,34 @@ class Process:
                     format_number(str(self.total_cases[-1])),
                     format_number(str(tomorrow_cases)),
                     format_number(str(tomorrow_deaths)))
-
         return 'Subject: {}\n\n{}'.format(subject, message.encode(
                                     'ascii', 'ignore').decode('ascii'))
 
-    def send_mail(self):
+    def send_mail(self, path_file):
         port = 465
-        file = open('passwords')
-        passw = file.read().split(';')
-        smtp_server = "smtp.gmail.com"
-        broadcaster = passw[0]
-        receiver = passw[1]
-        pass_ = passw[2]
+        try:
+            file = open(path_file)
+            passw = file.read().split(';')
+            smtp_server = "smtp.gmail.com"
+            broadcaster = passw[0]
+            receiver = passw[1]
+            pass_ = passw[2]
 
-        message = self.raport_to_mail()
+            message = self.raport_to_mail()
 
-        ssl_pol = ssl.create_default_context()
-        with smtplib.SMTP_SSL(smtp_server, port, context=ssl_pol) as serwer:
-            serwer.login(broadcaster, pass_)
-            serwer.sendmail(broadcaster, receiver, message)
+            ssl_pol = ssl.create_default_context()
+            with smtplib.SMTP_SSL(smtp_server, port, context=ssl_pol) as serwer:
+                serwer.login(broadcaster, pass_)
+                serwer.sendmail(broadcaster, receiver, message)
+            print('Mail was sent!')
+        except Exception as e:
+            print('Error:', e)
+
+'''
+D = DB()
+P = Process(D)
+keys = ['New cases', 'New deaths']
+P.save_plot_prediction(keys)
+print(P.pred_dict['New cases'])
+print(P.pred_dict['New deaths'])
+'''
