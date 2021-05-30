@@ -1,76 +1,80 @@
-import sqlite3
-import pandas as pd
+
+from sqlalchemy import (create_engine, Column, Integer, String, Sequence, Float,
+                        Text, PrimaryKeyConstraint, ForeignKey)
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, relationship, backref
+from sqlalchemy.orm import scoped_session
+from sqlalchemy import create_engine
 import os
 
 
-class DataBase:
+db_name = 'Covid_Data.db'
+direct_path = os.path.dirname(os.path.abspath(__file__))
+path='\\'.join([direct_path,db_name])
+sql = 'sqlite:///'
 
-    def __init__(self, country='Poland'):
-        db_name = 'Covid_Data.db'
-        direct_path = os.path.dirname(os.path.abspath(__file__))
-        path='\\'.join([direct_path,db_name])
+Country = 'Poland'
 
-        self.con = sqlite3.connect(path)
-        self.cursor = self.con.cursor()
-        self.country = country
+engine = create_engine(sql + path, echo =False)
+db_session = scoped_session(sessionmaker(autocommit=False,
+                                         autoflush=False,
+                                         bind=engine))
+Base = declarative_base()
+Base.query = db_session.query_property()
 
-        self.cursor.execute(
-                """SELECT count(name) FROM sqlite_master WHERE
-                type='table' AND name='""" + self.country + "' ")
+def init_db():
+    Base.metadata.create_all(bind=engine)
 
-        if self.cursor.fetchone()[0] != 1:
-            self.cursor.execute("CREATE TABLE " + self.country +
-                                """(date TEXT, new_cases INT,
-                                total_cases INT, new_deaths INT,
-                                total_deaths INT, total_recovered INT,
-                                active_cases INT, tot_1M REAL,
-                                fatality_ratio REAL, total_tests INT)""")
 
-        else:
-            print("successful database connection.\n")
+class MainBase(Base):
+    __tablename__ = Country
+    date = Column(Text, primary_key = True)
+    new_cases = Column(Integer )
+    new_deaths = Column(Integer )
+    total_cases = Column(Integer )
+    total_deaths = Column(Integer )
+    total_recovered = Column(Integer )
+    active_cases = Column(Integer )
+    tot_1M = Column(Float )
+    fatality_ratio = Column(Float )
+    total_tests = Column(Integer)
 
-    def __del__(self):
-        self.cursor.close()
-        self.con.close()
+    def __init__(self, **kwargs):
+        for key, var in kwargs.items():
+            self.__dict__[key] = var
 
-    def commit(self, S):
-        try:
-            self.con.commit()
-            print(f"Data was successfully committed ({S.date}).\n")
-        except Exception:
-            print("Data coudn't be commit.\n")
+class PredBase(Base):
+    __tablename__ = Country + '_pred'
+    date = Column(Text, primary_key = True)
+    cases_pred = Column(Integer )
+    deaths_pred = Column(Integer )
 
-    def get_last_record_date(self):
-        self.cursor.execute("SELECT date FROM " + self.country)
-        try:
-            last_date = self.cursor.fetchall()[-1][0]
-        except Exception:
-            last_date = None
-        return last_date
+    def __init__(self, **kwargs):
+        for key, var in kwargs.items():
+            self.__dict__[key] = var
 
-    def insert(self, S):
-        self.cursor.execute("INSERT INTO " + self.country +
-                            " VALUES (?,?,?,?,?,?,?,?,?,?)",
-                            (S.date, S.new_cases, S.total_cases,
-                             S.new_deaths, S.total_deaths, S.total_rec,
-                             S.active_cases, S.tot, S.fatality_ratio,
-                             S.total_tests))
-        self.commit(S)
 
-    def update(self, S):
-            sql_query = "UPDATE " + self.country + """ SET new_cases = ?,
-                        total_cases = ?, new_deaths = ?, total_deaths = ?,
-                        total_recovered = ?, active_cases = ?, tot_1M = ?,
-                        fatality_ratio = ?, total_tests = ?
-                        WHERE date = ? """
-            data = [S.new_cases, S.total_cases, S.new_deaths, S.total_deaths,
-                    S.total_rec, S.active_cases, S.tot, S.fatality_ratio,
-                    S.total_tests, S.date]
-            try:
-                self.cursor.execute(sql_query, data)
-                self.commit(S)
-                print("Update executed\n")
-            except sqlite3.Error as e:
-                print(f'Something was wrong!. Error num: {e}\n')
+def get_last_record(cls, get_date = False):
+    last_rec = [(key, val) for key,val in cls.query.all()[-1].__dict__.items()]
+    if last_rec[0][0] == '_sa_instance_state':
+        del last_rec[0]
+    if get_date:
+        return [val for key, val in last_rec if key=='date'][0]
+    else:
+        return last_rec
 
-    # def remove_record(self,day):
+def insert(cls, **kwargs):
+    db_session.add(cls(**kwargs))
+    db_session.commit()
+
+def delete(cls, id):
+    handler = cls.query.filter_by(date = id).first()
+    db_session.delete(handler)
+    db_session.commit()
+
+def get_data(cls):
+    data = []
+    for row in cls.query.all():
+        del row.__dict__['_sa_instance_state']
+        data.append(row.__dict__)
+    return data

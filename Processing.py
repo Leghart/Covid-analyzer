@@ -5,6 +5,7 @@ import textwrap
 import os
 import ssl
 import smtplib
+import datetime
 import matplotlib.pyplot as plt
 
 from sklearn.neural_network import MLPRegressor
@@ -13,7 +14,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import GridSearchCV
 
-from data_base import DataBase as DB
+from data_base import db_session, get_last_record, insert, delete, get_data
+from data_base import PredBase, MainBase, init_db
 
 
 def format_number(string):
@@ -22,37 +24,19 @@ def format_number(string):
 
 class Process:
     path = os.path.dirname(os.path.abspath(__file__))
+    fields = ['new_cases', 'total_cases', 'total_recovered', 'active_cases',
+                'new_deaths', 'total_deaths', 'tot_1M', 'fatality_ratio',
+                'total_tests', 'date']
 
-    def __init__(self, DB):
-        DB.cursor.execute('SELECT * FROM ' + DB.country)
-        raw_data = DB.cursor.fetchall()
+    def __init__(self):
+        raw_data = get_data(MainBase)
 
-        self.country = DB.country
-        self.dates = []
-        self.total_cases = []
-        self.new_cases = []
-        self.total_deaths = []
-        self.new_deaths = []
-        self.total_rec = []
-        self.active_cases = []
-        self.tot = []
-        self.total_tests = []
-        self.fatality_ratio = []
+        for key in __class__.fields:
+            self.__dict__[key] = []
 
         for i in raw_data:
-            self.dates.append(i[0])
-            self.total_cases.append(i[2])
-            self.new_cases.append(i[1])
-            self.total_deaths.append(i[4])
-            self.new_deaths.append(i[3])
-            self.total_rec.append(i[5])
-            self.active_cases.append(i[6])
-            self.tot.append(i[7])
-            self.fatality_ratio.append(i[8])
-            self.total_tests.append(i[9])
-
-        self.cases_pred = 0
-        self.deaths_pred = 0
+            for key, val in i.items():
+                self.__dict__[key].append(val)
 
     @staticmethod
     def preprocessData(data, output, k):
@@ -66,11 +50,12 @@ class Process:
         return np.array(X), np.array(Y)
 
     def get_data(self):
-        new_data = np.arange(len(self.dates))
+        new_data = np.arange(len(self.date))
         d = {'Date': new_data, 'Total cases': self.total_cases,
              'New cases': self.new_cases, 'Total deaths': self.total_deaths,
-             'New deaths': self.new_deaths, 'Total recovered': self.total_rec,
-             'Active cases': self.active_cases, 'Tot /1M': self.tot,
+             'New deaths': self.new_deaths,
+             'Total recovered': self.total_recovered,
+             'Active cases': self.active_cases, 'Tot /1M': self.tot_1M,
              'Fatality ratio': self.fatality_ratio,
              'Total tests': self.total_tests}
         df = pd.DataFrame(data=d)
@@ -110,7 +95,7 @@ class Process:
         plt.legend()
         plt.show()
 
-    def Kohonen(self, X, klasy, alfa=0.5, il_iter=100):
+    def Kohonen(self, X, klasy, alfa=0.45, il_iter=100):
         srd = sum(i for i in X) / len(X)
 
         X_std = np.array([(srd - X[i]) / np.linalg.norm(X[i])
@@ -174,12 +159,12 @@ class Process:
 
         return y_rad
 
-    def RBF_prediction(self, keys, *args, **kwargs):
+    def RBF_prediction(self, keys):
         data = self.get_data()
         pred_dict = {}
         for i in keys:
             plt.figure(i)
-            X, y = Process.preprocessData(data, i, 30)
+            X, y = Process.preprocessData(data, i, 75)
             print('Calculating prediction for {}'.format(i))
             y_rad = self.RBF(X, y, 100, 10)
 
@@ -192,7 +177,7 @@ class Process:
             plt.plot(t2, y, label="Original data")
             plt.xlabel("Days since the start of the pandemic")
             plt.legend()
-            plt.title('{} ({})'.format(i,self.dates[-1]))
+            plt.title('{} ({})'.format(i,self.date[-1]))
             plt.grid()
 
             full_path = Process.path + '\static\{}.png'.format(i)
@@ -203,6 +188,14 @@ class Process:
 
         self.cases_pred = pred_dict['New cases']
         self.deaths_pred = pred_dict['New deaths']
+
+        self.next_day = (datetime.datetime.strptime(self.date[-1],'%d.%m.%Y') +
+                    datetime.timedelta(days=1)).strftime('%d.%m.%Y')
+
+        init_db()
+        cap = {'date': self.next_day,'cases_pred': self.cases_pred,
+                'deaths_pred': self.deaths_pred}
+        insert(PredBase, **cap)
 
     def save_predicion_to_txt(self, date, file):
         text = '''Prediction for {}: new cases: {}
@@ -216,8 +209,9 @@ class Process:
 
     def raport_to_mail(self):
         From = "Automatyczny Raport Wirusowy"
-        subject = f'Raport z dnia: {self.dates[-1]}'
+        subject = f'Raport z dnia: {self.date[-1]}'
         message = """
+
         Dzisiejsze zachorowania: {}\n
         Dzisiejsze zgony: {}\n
         ==============================================
@@ -228,7 +222,7 @@ class Process:
         Ilość zmarłych na 1M: {}\n
         Współczynnik smiertelnosci: {}\n
         Wszystkie wykonane testy: {}\n
-        ------------ Prognoza na jutro ----------------
+        ------------ Prognoza na dzień {} ----------------
         Zachorowania: {}\n
         Zgony: {}
         """.format(
@@ -236,11 +230,12 @@ class Process:
                     format_number(str(self.new_deaths[-1])),
                     format_number(str(self.total_cases[-1])),
                     format_number(str(self.total_deaths[-1])),
-                    format_number(str(self.total_rec[-1])),
+                    format_number(str(self.total_recovered[-1])),
                     format_number(str(self.active_cases[-1])),
-                    format_number(str(self.tot[-1])),
+                    format_number(str(self.tot_1M[-1])),
                     str(self.fatality_ratio[-1]),
                     format_number(str(self.total_cases[-1])),
+                    str(self.next_day),
                     format_number(str(self.cases_pred)),
                     format_number(str(self.deaths_pred)))
         return 'Subject: {}\n\n{}'.format(subject, message.encode(
@@ -265,3 +260,7 @@ class Process:
             print('Mail was sent!')
         except Exception as e:
             print('Error:', e)
+
+
+#P = Process()
+#P.RBF_prediction(['New cases','New deaths'])

@@ -2,7 +2,6 @@ from bs4 import BeautifulSoup
 from requests import get
 from datetime import date
 import textwrap
-from data_base import DataBase as DB
 
 
 def format_number(string):
@@ -14,6 +13,7 @@ class DailyRaport:
 
     def __init__(self, country='Poland'):
         self.get_actual_data(country)
+        self.show_raport()
 
     def get_actual_data(self, country):
         url = 'https://www.worldometers.info/coronavirus/#main_table'
@@ -38,19 +38,25 @@ class DailyRaport:
             self.new_cases = int(data[2].replace('+', '').replace(',', ''))
             self.total_deaths = int(data[3].replace(',', ''))
             self.new_deaths = int(data[4].replace('+', '').replace(',', ''))
-            self.total_rec = int(data[5].replace(',', ''))
+            self.total_recovered = int(data[5].replace(',', ''))
             self.active_cases = int(data[7].replace('+', '').replace(',', ''))
-            self.tot = int(data[9].replace('+', '').replace(',', ''))
+            self.tot_1M = int(data[9].replace('+', '').replace(',', ''))
             self.total_tests = int(data[11].replace(',', ''))
             self.fatality_ratio = round(self.total_deaths /
                                         self.total_cases * 100, 2)
 
-            date_today = date.today()
-            self.date = date_today.strftime("%d.%m.%Y")
+            self.date = date.today().strftime("%d.%m.%Y")
 
         except ValueError:
             print(f"Data wasn't uploaded on page yet ({self.country}).\n")
 
+    def return_cap(self):
+        return {'new_cases': self.new_cases, 'total_cases': self.total_cases,
+                'total_recovered': self.total_recovered,
+                'active_cases': self.active_cases, 'new_deaths': self.new_deaths,
+                'total_deaths': self.total_deaths, 'tot_1M': self.tot_1M,
+                'fatality_ratio': self.fatality_ratio,
+                'total_tests': self.total_tests, 'date': self.date}
 
     def save_data_to_csv(self, ofile, nfile, country):
         out_file = open(nfile, 'w')
@@ -67,9 +73,9 @@ class DailyRaport:
         print(f'New deaths: {format_number(str(self.new_deaths))}')
         print(f'Total cases: {format_number(str(self.total_cases))}')
         print(f'Total deaths: {format_number(str(self.total_deaths))}')
-        print(f'Total recoveries: {format_number(str(self.total_rec))}')
+        print(f'Total recoveries: {format_number(str(self.total_recovered))}')
         print(f'Actice cases: {format_number(str(self.active_cases))}')
-        print(f'Tot cases/1M: {format_number(str(self.tot))}')
+        print(f'Tot cases/1M: {format_number(str(self.tot_1M))}')
         print(f'Fatality ratio: {str(self.fatality_ratio)}')
         print(f'Total tests: {format_number(str(self.total_tests))}')
         print(f'Data recived: {self.date}')
