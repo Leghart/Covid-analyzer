@@ -4,7 +4,6 @@ import os
 import time
 import pickle
 
-from data_base import DataBase as DB
 from processing import Process
 from scrap import DailyRaport as DR
 
@@ -20,7 +19,7 @@ def hide_term():
 
 
 if __name__ == '__main__':
-    scrap_time = '11:15'
+    scrap_time = '11:00'
     today_ = datetime.datetime.today().strftime('%d.%m.%Y')
 
     keys = ['New cases','New deaths']
@@ -32,19 +31,22 @@ if __name__ == '__main__':
         min_now = datetime.datetime.now().minute
         time_now = str(hour_now) + ':' + str(min_now)
         try:
-            if time_now >= scrap_time and get_last_record(MainBase, get_date = True) != today_:
-                os.system('cls')
-                D = DR('Poland')
-                kwargs = D.return_cap()
-                insert(MainBase, **kwargs)
+            if time_now >= scrap_time:
+                if get_last_record(MainBase, get_date = True) != today_:
+                    os.system('cls')
+                    D = DR('Poland')
+                    kwargs = D.return_cap()
+                    insert(MainBase, **kwargs)
 
-                Pl = Process()
-                Pl.RBF_prediction(keys)
+                    Pl = Process()
+                    Pl.RBF_prediction(keys)
 
-                Pl.send_mail(Pl.path + '\passwords')
-                message = 'Data was already downloaded. Waiting for update time.'
+                    Pl.send_mail(Pl.path + '\passwords')
+                    message = 'Data was already downloaded. Waiting for update time.'
+                else:
+                    message = 'Data is in a database.'
             else:
-                message = 'Data is in a database.'
+                message = 'Data wasnt uploaded yet.'
 
         except Exception as e:
             print("Error: ", e)

@@ -166,7 +166,7 @@ class Process:
             plt.figure(i)
             X, y = Process.preprocessData(data, i, 75)
             print('Calculating prediction for {}'.format(i))
-            y_rad = self.RBF(X, y, 100, 10)
+            y_rad = self.RBF(X, y, 200, 10)
 
             pred_dict[i] = int(y_rad[-1])
 
@@ -261,6 +261,8 @@ class Process:
         except Exception as e:
             print('Error:', e)
 
-
-#P = Process()
-#P.RBF_prediction(['New cases','New deaths'])
+'''
+P = Process()
+P.RBF_prediction(['New cases','New deaths'])
+print(P.cases_pred, P.deaths_pred, P.next_day)
+'''
