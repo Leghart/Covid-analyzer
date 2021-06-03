@@ -2,6 +2,7 @@
 * [General info](#general-info)
 * [Technologies](#technologies)
 * [Setup](#setup)
+* [Prediction](#prediction)
 * [Periodic data download](#periodic-data-download)
 
 ## General info
@@ -23,6 +24,13 @@ change the .bat file (this is described in "Periodic data download").
 To run the program, run the main.py file which is responsible for downloading
 data and uploading them to the database. The page.py file is responsible for
 launching the website.
+
+## Prediction
+The following prediction functions have been implemented in this project:
+* Linear Regression - 
+* RBF - 
+* 
+
 ## Periodic data download
 If you want automatically download data you can use: Schedule Manager on Windows
 or Corn on Linux. This project was done on Windows so here's a instruction how
