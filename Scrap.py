@@ -4,18 +4,24 @@ from datetime import date
 import textwrap
 
 
-def format_number(string):
-    return " ".join(digit for digit in textwrap.wrap(
-                                str(string)[::-1], 3))[::-1]
 
+# Class which is responsible for connect with www page where every day are
+# published data about daily coronavirus cases and scrape data to get
+# nessesery inforamtions.
+class DailyReport:
 
-class DailyRaport:
-
+    # Constructor downloaded data and show it in terminal
     def __init__(self, country='Poland'):
         self.get_actual_data(country)
         self.show_raport()
 
-    def get_actual_data(self, country):
+    # Main feature that connects to www.worldometers.com to download daily
+    # report from the selected country. An error may appear while retrieving
+    # data because when the function is called, the data may not yet be loaded
+    # into the page (will this is signaled by a special message in the
+    # terminal). Downloaded data is saving in existing instance storing main
+    # inforamtions.
+    def get_actual_data(self, country='Poland'):
         url = 'https://www.worldometers.info/coronavirus/#main_table'
         page = get(url)
         bs = BeautifulSoup(page.content, 'html.parser')
@@ -50,14 +56,21 @@ class DailyRaport:
         except ValueError:
             print(f"Data wasn't uploaded on page yet ({self.country}).\n")
 
+    # Return capsule with data to use it as kwargs during insert to database
     def return_cap(self):
         return {'new_cases': self.new_cases, 'total_cases': self.total_cases,
                 'total_recovered': self.total_recovered,
-                'active_cases': self.active_cases, 'new_deaths': self.new_deaths,
+                'active_cases': self.active_cases,
+                'new_deaths': self.new_deaths,
                 'total_deaths': self.total_deaths, 'tot_1M': self.tot_1M,
                 'fatality_ratio': self.fatality_ratio,
                 'total_tests': self.total_tests, 'date': self.date}
 
+    # Saves the data of one country in a csv file. Data taken from:
+    # https://github.com/CSSEGISandData/COVID-19
+    # Args: folder where the relevant data files are located, the new file you
+    # want to save to data for the selected country, country name (check that
+    # the files contain the same name entered).
     def save_data_to_csv(self, ofile, nfile, country):
         out_file = open(nfile, 'w')
         for filename in os.listdir(ofile):
@@ -67,6 +80,7 @@ class DailyRaport:
                 out = [s for s in lines if country in s]
                 out_file.writelines(["%s\n" % item for item in out])
 
+    # Simple raport in terminal version, showing daily data
     def show_raport(self):
         print(f'Country: {self.country}')
         print(f'New cases: {format_number(str(self.new_cases))}')
@@ -79,3 +93,9 @@ class DailyRaport:
         print(f'Fatality ratio: {str(self.fatality_ratio)}')
         print(f'Total tests: {format_number(str(self.total_tests))}')
         print(f'Data recived: {self.date}')
+
+    # Change number format to separate thousandth part - format to mail
+    @staticmethod
+    def format_number(string):
+        return " ".join(digit for digit in textwrap.wrap(
+                                    str(string)[::-1], 3))[::-1]
