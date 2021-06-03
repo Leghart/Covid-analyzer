@@ -4,7 +4,6 @@ from datetime import date
 import textwrap
 
 
-
 # Class which is responsible for connect with www page where every day are
 # published data about daily coronavirus cases and scrape data to get
 # nessesery inforamtions.
