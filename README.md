@@ -29,7 +29,9 @@ launching the website.
 The following prediction functions have been implemented in this project:
 * Linear Regression - 
 * RBF - 
-* 
+* ARIMA - Autoregressive integrated moving average is trying to forecast a future cases. 
+ARIMA models are applied in some cases where data show evidence of non-stationarity in 
+the sense of mean. Actually the best solution which is used. 
 
 ## Periodic data download
 If you want automatically download data you can use: Schedule Manager on Windows
