@@ -25,9 +25,9 @@ To run the program, run the main.py file which is responsible for downloading
 data and uploading them to the database. The page.py file is responsible for
 launching the website. Before used code, you have to prepare setup.py file. There
 are a few importat fields: 
-Country - choose a country to scrap data, insert to 
+- Country - choose a country to scrap data, insert to 
 database etc. 
-scrap_time - different countries have different upload-data times.
+- scrap_time - different countries have different upload-data times.
 
 
 ## Prediction
