@@ -12,7 +12,6 @@ class DailyReport:
     # Constructor downloaded data and show it in terminal
     def __init__(self, country='Poland'):
         self.get_actual_data(country)
-        self.show_raport()
 
     # Main feature that connects to www.worldometers.com to download daily
     # report from the selected country. An error may appear while retrieving
@@ -80,18 +79,22 @@ class DailyReport:
                 out_file.writelines(["%s\n" % item for item in out])
 
     # Simple raport in terminal version, showing daily data
-    def show_raport(self):
-        print(f'Country: {self.country}')
-        print(f'New cases: {format_number(str(self.new_cases))}')
-        print(f'New deaths: {format_number(str(self.new_deaths))}')
-        print(f'Total cases: {format_number(str(self.total_cases))}')
-        print(f'Total deaths: {format_number(str(self.total_deaths))}')
-        print(f'Total recoveries: {format_number(str(self.total_recovered))}')
-        print(f'Actice cases: {format_number(str(self.active_cases))}')
-        print(f'Tot cases/1M: {format_number(str(self.tot_1M))}')
-        print(f'Fatality ratio: {str(self.fatality_ratio)}')
-        print(f'Total tests: {format_number(str(self.total_tests))}')
-        print(f'Data recived: {self.date}')
+    def __str__(self):
+        return('Country: {}\nNew cases: {}\nNew deaths: {}\nTotal cases: {}\n'
+               'Total deaths: {}\nTotal recovered: {}\nActive cases: {}\n'
+               'Tot cases/1M: {}\nFatality ratio: {}\nTotal tests: {}\n'
+               'Data recived: {}'.format(
+                self.country,
+                __class__.format_number(str(self.new_cases)),
+                __class__.format_number(str(self.new_deaths)),
+                __class__.format_number(str(self.total_cases)),
+                __class__.format_number(str(self.total_deaths)),
+                __class__.format_number(str(self.total_recovered)),
+                __class__.format_number(str(self.active_cases)),
+                __class__.format_number(str(self.tot_1M)),
+                str(self.fatality_ratio),
+                __class__.format_number(str(self.total_tests)),
+                self.date))
 
     # Change number format to separate thousandth part - format to mail
     @staticmethod
