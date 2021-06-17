@@ -5,9 +5,9 @@ from sqlalchemy.orm import sessionmaker, relationship, backref
 from sqlalchemy.orm import scoped_session
 from sqlalchemy import create_engine
 import os
+from setup import Country
+import types
 
-# temp select country to connect with database
-Country = 'Poland'
 
 # Prepare path to database where data will be saved.
 db_name = 'Covid_Data.db'
@@ -84,7 +84,7 @@ def insert(cls, **kwargs):
 
 
 # Delete record from selected table by given id as date.
-def delete(cls, id):
+def remove(cls, id):
     handler = cls.query.filter_by(date=id).first()
     db_session.delete(handler)
     db_session.commit()
@@ -97,3 +97,13 @@ def get_data(cls):
         del row.__dict__['_sa_instance_state']
         data.append(row.__dict__)
     return data
+
+
+# Add methods to each class
+clas = ['PredBase', 'MainBase']
+method = ['insert', 'remove', 'get_data', 'get_last_record']
+tuples = [(a, b) for a in clas for b in method]
+
+for (cl, meth) in tuples:
+    instr = f'{cl}.{meth} = types.MethodType({meth}, {cl})'
+    exec(instr)
