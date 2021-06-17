@@ -5,7 +5,6 @@ import datetime
 import os
 import time
 
-from data_base import db_session, get_last_record, insert, delete, get_data
 from data_base import PredBase, MainBase, init_db
 
 app = Flask(__name__)
@@ -13,8 +12,8 @@ app = Flask(__name__)
 @app.route("/")
 def index():
 
-    last_update = get_last_record(MainBase, get_date = True)
-    pred_data = get_last_record(PredBase)
+    last_update = MainBase.get_last_record(get_date=True)
+    pred_data = PredBase.get_last_record()
     di = {}
     for key, val in pred_data:
         di.setdefault(key, val)
@@ -32,14 +31,14 @@ def index():
             'total_recovered', 'active_cases', 'tot_1M','fatality_ratio',
             'total_tests')
 
-    raw_data = get_data(MainBase)[-14:]
+    raw_data = MainBase.get_data()[-14:]
     data = []
 
     for cell in raw_data:
         tmp = [cell[key] for key in keys]
         data.append(tmp)
 
-    return render_template('index.html', **locals())
+    return render_template('main.html', **locals())
 
 
 

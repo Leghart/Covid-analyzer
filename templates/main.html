@@ -34,20 +34,25 @@
 
 <body>
   <h1> <p style="text-align:center;"> <strong> Covid Analyzer <strong> </p>  </h1>
-  <h2> General information </h2>
+  <h2> Table of contents </h2>
+    <a href="#gen_info"> General informations </a> <br>
+    <a href="#table"> Table with data </a> <br>
+    <a href="#images"> Images of cases with prediction</a> <br>
+    <a href="#forecast"> Forecast for the future </a> <br>
+
+  <h2> <p id="gen_info"> General informations </p> </h2>
   Welcome to my project of analyzing Covid in Poland. I downloaded raw data from here:
   <a href = "https://www.worldometers.info/" target = "_blank" title = "original data">
-  link
-  </a>
+  link</a>
   and then use machine learning to predict a new cases for future. Currently it's simple version of project so
   I can only predict one day. That site is divided into 4 main sections, the first is what you are reading right now, second
-  section presents a table of last 10 records I collected. There are several columns that contain the most important information for
+  section presents a table of last 14 records I collected. There are several columns that contain the most important information for
   example: new cases of infection, new deaths, total number of cases, total number of deaths, etc. The third section contains graphs of data with
   prediction. It focuses the most important points that should be predicted. The last
   section will tell you what could will happen tomorrow. This page is updated automatically at 6 p.m. every day.
   <p> Last update: {{ last_update }} </p>
 
-  <h2>  Table with data</h2>
+  <h2> <p id="table" > Table with data </p> </h2>
   <table class="table">
     <tr class="table__header">
       {% for header in heading %}
@@ -65,13 +70,13 @@
   </table>
   </body>
 
-  <h2>  Images of cases with predictions  </h2>
-
+  <h2> <p id="images"> Images of cases with prediction </p> </h2>
   <img src = "static/New cases.png" alt = 'New cases' > <img src = "static/New deaths.png" alt = 'New deaths'>
-
-  <h2>  Prediction for future ({{tomorrow_date}})</h2>
+  <h2>  <p id="forecast"> Forecast for the future ({{tomorrow_date}}) </p></h2>
   Predicted new cases of infection for tomorrow: {{new_cases_pred}} <br/>
   Predicted new deaths for tomorrow: {{new_deaths_pred}}<br/>
   All forecasts are burdened with a large error resulting from the adopted prediction method.
+
+
 </body>
 </html>
