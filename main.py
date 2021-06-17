@@ -1,29 +1,21 @@
-import win32gui, win32con
 import datetime
 import os
 import time
-import pickle
 
 from processing import Process
-from scrap import DailyRaport as DR
+from scrap import DailyReport as DR
 
-from data_base import db_session, get_last_record, insert, delete, get_data
 from data_base import PredBase, MainBase, init_db
-
-
-def show_term():
-    win32gui.ShowWindow(the_program_to_hide, win32con.SW_RESTORE)
-
-def hide_term():
-    win32gui.ShowWindow(the_program_to_hide , win32con.SW_HIDE)
+from setup import Country, scrap_time, Forecast_hor
 
 
 if __name__ == '__main__':
-    scrap_time = '11:00'
     today_ = datetime.datetime.today().strftime('%d.%m.%Y')
 
-    keys = ['New cases','New deaths']
+    keys = ['New cases', 'New deaths']
     message = 'Wait for a next scrap...'
+
+
 
     while(True):
         print(message)
@@ -32,19 +24,25 @@ if __name__ == '__main__':
         time_now = str(hour_now) + ':' + str(min_now)
         try:
             if time_now >= scrap_time:
-                if get_last_record(MainBase, get_date = True) != today_:
+                if MainBase.get_last_record(get_date=True) != today_:
                     os.system('cls')
-                    D = DR('Poland')
+                    print('Today pred: {}'.format(PredBase.get_last_record()))
+                    D = DR(Country)
+                    print(D)
+
                     kwargs = D.return_cap()
-                    insert(MainBase, **kwargs)
+
+                    MainBase.insert(**kwargs)
 
                     Pl = Process()
-                    Pl.RBF_prediction(keys)
+                    #Pl.PRED(keys, Forecast_hor)
+                    Pl.ARIMA(keys, Forecast_hor)
 
-                    Pl.send_mail(Pl.path + '\passwords')
-                    message = 'Data was already downloaded. Waiting for update time.'
-                else:
-                    message = 'Data is in a database.'
+                    broad_file = Pl.path + r'\broadcaster'
+                    rec_file = Pl.path + r'\receiver'
+                    pass_file = Pl.path + r'\password'
+                    Pl.send_mail(broad_file, rec_file, pass_file)
+                    exit()
             else:
                 message = 'Data wasnt uploaded yet.'
 
