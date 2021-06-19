@@ -400,7 +400,6 @@ class Process:
                 'deaths_pred': self.deaths_pred}
         PredBase.insert(**cap)
 
-
     def LSTM(self, keys=0):
         from tensorflow.keras.models import Sequential
         from tensorflow.keras.layers import Dense
@@ -408,20 +407,19 @@ class Process:
         from sklearn.preprocessing import MinMaxScaler
         from sklearn.metrics import mean_squared_error
 
-        key = 'New cases'
+        key = 'New deaths'
         data = self.get_data_from_self()[key].values
         data = data.reshape(len(data),1)
 
         scaler = MinMaxScaler(feature_range=(0, 1))
         dataset = scaler.fit_transform(data)
 
-
-#       split into train and test sets
-        train_size = int(len(dataset) * 0.9)
+        train_size = int(len(dataset) * 0.5)
         test_size = len(dataset) - train_size
         train, test = dataset[0:train_size,:], dataset[train_size:len(dataset),:]
 
-        look_back = 10
+
+        look_back = 1
         trainX, trainY = create_dataset(train, look_back)
         testX, testY = create_dataset(test, look_back)
 
@@ -429,40 +427,62 @@ class Process:
         testX = np.reshape(testX, (testX.shape[0], 1, testX.shape[1]))
 
         model = Sequential()
-        model.add(LSTM(4, input_shape=(1, look_back)))
+        model.add(LSTM(10, input_shape=(1, look_back)))
         model.add(Dense(1))
         model.compile(loss='mean_squared_error', optimizer='nadam')
-        model.fit(trainX, trainY, epochs=500, batch_size=32, verbose=2)
+        model.fit(trainX, trainY, epochs=100, batch_size=32, verbose=2)
 
 
         trainPredict = model.predict(trainX)
         testPredict = model.predict(testX)
+
         # invert predictions
         trainPredict = scaler.inverse_transform(trainPredict)
-        trainY = scaler.inverse_transform([trainY])
         testPredict = scaler.inverse_transform(testPredict)
-        testY = scaler.inverse_transform([testY])
-        # calculate root mean squared error
-        trainScore = math.sqrt(mean_squared_error(trainY[0], trainPredict[:,0]))
-        #print('Train Score: %.2f RMSE' % (trainScore))
-        testScore = math.sqrt(mean_squared_error(testY[0], testPredict[:,0]))
-        #print('Test Score: %.2f RMSE' % (testScore))
-
 
 
         trainPredictPlot = np.empty_like(dataset)
         trainPredictPlot[:, :] = np.nan
-        trainPredictPlot[look_back:len(trainPredict)+look_back, :] = trainPredict
-        # shift test predictions for plotting
+        trainPredictPlot[:len(trainPredict)] = trainPredict #git
+
         testPredictPlot = np.empty_like(dataset)
         testPredictPlot[:, :] = np.nan
-        testPredictPlot[len(trainPredict)+(look_back*2)+1:len(dataset)-1, :] = testPredict
-        # plot baseline and predictions
-        plt.plot(scaler.inverse_transform(dataset))
-        plt.plot(trainPredictPlot)
-        plt.plot(testPredictPlot)
-        plt.show()
+        testPredictPlot[len(trainPredict)+(look_back*2):len(dataset)-2] = testPredict
 
+
+
+        #dataset = scaler.inverse_transform(dataset)
+        num_pred = 30
+        prediction_list = dataset[-look_back:]
+        #print(scaler.inverse_transform(prediction_list))
+
+        for _ in range(num_pred):
+            x = prediction_list[-look_back:]
+            x = np.reshape(x,(1,-1))
+            x = np.reshape(x, (x.shape[0], 1, x.shape[1]))
+            out = model.predict(x)
+            prediction_list = np.append(prediction_list, out)
+        prediction_list = np.reshape(prediction_list,(1,-1))
+        prediction_list = scaler.inverse_transform(prediction_list)
+
+        last_date = len(dataset)
+        prediction_dates = list(range(last_date, last_date + num_pred+1))
+        basic_time = list(range(1, len(dataset)+1))
+        basic_time.extend(prediction_dates)
+
+        prediction_list = prediction_list.flatten()
+
+
+        plt.plot(basic_time[:len(dataset)], scaler.inverse_transform(dataset), label='original')
+        plt.plot(basic_time[:len(trainPredictPlot)], trainPredictPlot, label='train')
+        #plt.plot(basic_time[len(trainPredictPlot) + 1 : len(dataset)-len(trainPredictPlot)], testPredictPlot, label='test')
+        plt.plot(basic_time[:len(trainPredictPlot)], testPredictPlot, label='test')
+        plt.plot(prediction_dates, prediction_list, label='forecast')
+        plt.axvline(x=len(dataset), color='k', linestyle='--')
+        plt.legend()
+        plt.minorticks_on()
+        plt.grid(b=True, which='minor', color='#999999', linestyle='-', alpha=0.2)
+        plt.show()
 
 
 P = Process()
@@ -473,3 +493,61 @@ P.LSTM()
 # cap = {'date': '69-69-69','cases_pred': 10,
 #     'deaths_pred': 20}
 # PredBase.insert(**cap)
+
+
+
+
+'''
+
+        look_back = 5
+        scaler = MinMaxScaler(feature_range=(0, 1))
+        dataset = scaler.fit_transform(data)
+
+
+#       split into train and test sets
+        train_size = int(len(dataset) * 0.95)
+        train = dataset[:train_size]
+        test = dataset[train_size:]
+
+
+        trainX, trainY = create_dataset(train, look_back)
+        testX, testY = create_dataset(test, look_back)
+
+
+        # [samples, time steps, features]
+        trainX = np.reshape(trainX, (trainX.shape[0], 1, trainX.shape[1]))
+        testX = np.reshape(testX, (testX.shape[0], 1, testX.shape[1]))
+
+        model = Sequential()
+        model.add(LSTM(4, input_shape=(1, look_back)))
+        model.add(Dense(1))
+        model.compile(loss='mean_squared_error', optimizer='nadam')
+        model.fit(trainX, trainY, epochs=500, batch_size=32)
+
+
+        trainPredict = model.predict(trainX)
+        testPredict = model.predict(testX)
+
+
+        # invert predictions - original values
+        trainPredict = scaler.inverse_transform(trainPredict)
+        testPredict = scaler.inverse_transform(testPredict)
+
+
+        trainPredictPlot = np.empty_like(dataset)
+        trainPredictPlot[:, :] = np.nan
+        trainPredictPlot[look_back:len(trainPredict)+look_back, :] = trainPredict
+
+        # shift test predictions for plotting
+        testPredictPlot = np.empty_like(dataset)
+        testPredictPlot[:, :] = np.nan
+        testPredictPlot[len(trainPredict)+(look_back*2)+1:len(dataset)-1, :] = testPredict
+
+
+        # plot baseline and predictions
+        plt.plot(data, label='original') #original data
+        plt.plot(trainPredictPlot, label='train') # train data
+        plt.plot(testPredictPlot, label='test')
+        plt.show()
+        plt.legend()
+'''
