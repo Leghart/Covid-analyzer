@@ -6,6 +6,7 @@ import os
 import ssl
 import smtplib
 import datetime
+import functools
 import matplotlib.pyplot as plt
 
 from sklearn.neural_network import MLPRegressor
@@ -15,6 +16,12 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import GridSearchCV
 from scipy.interpolate import Rbf
 from sklearn.metrics import r2_score
+
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.layers import LSTM
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_squared_error
 
 from pmdarima.arima import auto_arima
 from pmdarima.arima import ADFTest
@@ -35,17 +42,6 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 def format_number(string):
     return " ".join(digit for digit in textwrap.wrap(
                                 str(string)[::-1], 3))[::-1]
-
-
-def create_dataset(dataset, look_back=1):
-	dataX, dataY = [], []
-	for i in range(len(dataset)-look_back-1):
-		a = dataset[i:(i+look_back), 0]
-		dataX.append(a)
-		dataY.append(dataset[i + look_back, 0])
-	return np.array(dataX), np.array(dataY)
-
-
 
 
 class Process:
@@ -74,6 +70,16 @@ class Process:
             X.append(x_i)
             Y.append(y_i)
         return np.array(X), np.array(Y)
+
+    @staticmethod
+    def create_dataset(dataset, look_back=1):
+    	dataX, dataY = [], []
+    	for i in range(len(dataset)-look_back-1):
+    		a = dataset[i:(i+look_back), 0]
+    		dataX.append(a)
+    		dataY.append(dataset[i + look_back, 0])
+    	return np.array(dataX), np.array(dataY)
+
 
     def get_data_from_self(self):
         new_data = np.arange(len(self.date))
@@ -186,16 +192,27 @@ class Process:
         self.next_day = (datetime.datetime.strptime(self.date[-1],'%d.%m.%Y') +
                     datetime.timedelta(days=1)).strftime('%d.%m.%Y')
 
+    # dziala
     def plot_decorator(f):
         def func(self, *args):
             kwargs = f(self, *args)
+
             for key in kwargs:
                 plt.figure(key)
-                plt.plot(kwargs[key][0], label="Original data")
-                plt.plot(kwargs[key][1], label="Forecast")
+
+                plt.plot(kwargs[key][0][0], kwargs[key][0][1], label='Original data')
+                plt.plot(kwargs[key][1][0], kwargs[key][1][1], label='Train data')
+                plt.plot(kwargs[key][2][0], kwargs[key][2][1], label='Test data')
+                plt.plot(kwargs[key][3][0], kwargs[key][3][1], label='Forecast')
+
+                plt.axvline(x=len(kwargs[key][0][0]), color='k', linestyle='--')
+
                 plt.legend()
                 plt.title('{} ({})'.format(key, self.date[-1]))
-                plt.grid()
+                plt.minorticks_on()
+                plt.grid(b=True, which='minor', color='#999999', linestyle='-',alpha=0.2)
+                #plt.show()
+
 
                 full_path = __class__.path + '\static\{}.png'.format(key)
                 if os.path.isfile(full_path):
@@ -205,8 +222,28 @@ class Process:
 
         return func
 
+    # kwargs jest none
+    def db_decorator(f):
+        def func(self, *args):
+            kwargs = f(self, *args)
+
+            for key in kwargs:
+                cases_pred = kwargs['New cases'][3][1][0]
+                deaths_pred = kwargs['New deaths'][3][1][0]
+
+                next_day = (datetime.datetime.strptime(self.date[-1],'%d.%m.%Y') +
+                            datetime.timedelta(days=1)).strftime('%d.%m.%Y')
+
+                init_db()
+                cap = {'date': next_day,'cases_pred': cases_pred,
+                        'deaths_pred': deaths_pred}
+                PredBase.insert(**cap)
+
+        return func
+
+    #@db_decorator
     @plot_decorator
-    def ARIMA(self, keys, days_pred=7):
+    def ARIMA(self, keys=['New cases', 'New deaths'], days_pred=7):
         pred_dict = {}
         kwargs = {}
         for key in keys:
@@ -220,13 +257,20 @@ class Process:
             test = ndata[act:]
 
             prediction = pd.DataFrame(arima_model.predict(n_periods = len(test)), index=test.index)
-            print(prediction)
-            pred_dict[key] = int(prediction.values.tolist()[0][0])
-            kwargs[key] = [data, prediction]
+            x_pred = list(range(len(data), len(data) + days_pred ))
+            #pred_dict[key] = int(prediction.values.tolist()[0][0])
+            train = [0]
+            x_train = [0]
+            x_test = [0]
+            test = [0]
+            x = list(range(1, len(data) + 1))
+            y_pred = prediction.values.flatten()
+
+            kwargs[key] = [[x, data], [x_train, train], [x_test, test], [x_pred, y_pred]]
 
 
-        self.cases_pred = pred_dict['New cases']
-        self.deaths_pred = pred_dict['New deaths']
+        self.cases_pred = int(kwargs['New cases'][3][1][0])
+        self.deaths_pred = int(kwargs['New deaths'][3][1][0])
 
         self.next_day = (datetime.datetime.strptime(self.date[-1],'%d.%m.%Y') +
                     datetime.timedelta(days=1)).strftime('%d.%m.%Y')
@@ -368,125 +412,89 @@ class Process:
         plt.show()
         '''
 
-    def PRED(self, keys=['New cases', 'New deaths'], Forecast_hor=7):
+    #@db_decorator
+    @plot_decorator
+    def LSTM(self, num_pred=15, keys=['New cases', 'New deaths']):
+        pred_dict = {}
+        kwargs = {}
 
-        next_day = (datetime.datetime.strptime(MainBase.get_data()[-1]['date'],'%d.%m.%Y') +
-                    datetime.timedelta(days=1)).strftime('%d.%m.%Y')
+        for key in keys:
+            # Get data
+            data = self.get_data_from_self()[key].values
+            data = data.reshape(len(data),1)
 
-        print('Predykcja na {}'.format(next_day) )
-        #v = self.VAR(keys)
-        #print('VAR: ', v)
+            # Normalize data to 0-1 (easier work with that)
+            scaler = MinMaxScaler(feature_range=(0, 1))
+            dataset = scaler.fit_transform(data)
 
-        a = self.ARIMA_test(keys, Forecast_hor)
-        print('ARIMA: ', a)
+            # Set a train-test factor and split data
+            train_size = int(len(dataset) * 0.75)
+            test_size = len(dataset) - train_size
+            train, test = dataset[0:train_size], dataset[train_size:len(dataset)]
 
-        h = self.HVES(keys)
-        print('HVES: ', h)
+            #
+            look_back = 1
+            trainX, trainY = __class__.create_dataset(train, look_back)
+            testX, testY = __class__.create_dataset(test, look_back)
 
-        waga = 3
-        cases = int(( a['New cases'] + h['New cases'])/waga)
-        deaths = int(( + a['New deaths'] + h['New deaths'])/waga)
-
-        print('TOTAL: ',cases,deaths)
-
-
-        self.cases_pred = cases
-        self.deaths_pred = deaths
-        self.next_day = next_day
-
-
-        init_db()
-        cap = {'date': self.next_day,'cases_pred': self.cases_pred,
-                'deaths_pred': self.deaths_pred}
-        PredBase.insert(**cap)
-
-    def LSTM(self, keys=0):
-        from tensorflow.keras.models import Sequential
-        from tensorflow.keras.layers import Dense
-        from tensorflow.keras.layers import LSTM
-        from sklearn.preprocessing import MinMaxScaler
-        from sklearn.metrics import mean_squared_error
-
-        key = 'New deaths'
-        data = self.get_data_from_self()[key].values
-        data = data.reshape(len(data),1)
-
-        scaler = MinMaxScaler(feature_range=(0, 1))
-        dataset = scaler.fit_transform(data)
-
-        train_size = int(len(dataset) * 0.5)
-        test_size = len(dataset) - train_size
-        train, test = dataset[0:train_size,:], dataset[train_size:len(dataset),:]
+            # Create a special form (inputs, targets, sample_weights)
+            trainX = np.reshape(trainX, (trainX.shape[0], 1, trainX.shape[1]))
+            testX = np.reshape(testX, (testX.shape[0], 1, testX.shape[1]))
 
 
-        look_back = 1
-        trainX, trainY = create_dataset(train, look_back)
-        testX, testY = create_dataset(test, look_back)
+            # Create LSTM network and learn using train-set
+            model = Sequential()
+            model.add(LSTM(50, input_shape=(1, look_back)))
+            model.add(Dense(1))
+            model.compile(loss='mean_squared_error', optimizer='nadam')
+            model.fit(trainX, trainY, epochs=500, batch_size=64, verbose=1)
 
-        trainX = np.reshape(trainX, (trainX.shape[0], 1, trainX.shape[1]))
-        testX = np.reshape(testX, (testX.shape[0], 1, testX.shape[1]))
+            # Use fitted network to predict a train and test sets
+            trainPredict = model.predict(trainX)
+            testPredict = model.predict(testX)
 
-        model = Sequential()
-        model.add(LSTM(10, input_shape=(1, look_back)))
-        model.add(Dense(1))
-        model.compile(loss='mean_squared_error', optimizer='nadam')
-        model.fit(trainX, trainY, epochs=100, batch_size=32, verbose=2)
-
-
-        trainPredict = model.predict(trainX)
-        testPredict = model.predict(testX)
-
-        # invert predictions
-        trainPredict = scaler.inverse_transform(trainPredict)
-        testPredict = scaler.inverse_transform(testPredict)
+            # Get original values
+            trainPredict = scaler.inverse_transform(trainPredict)
+            testPredict = scaler.inverse_transform(testPredict)
 
 
-        trainPredictPlot = np.empty_like(dataset)
-        trainPredictPlot[:, :] = np.nan
-        trainPredictPlot[:len(trainPredict)] = trainPredict #git
-
-        testPredictPlot = np.empty_like(dataset)
-        testPredictPlot[:, :] = np.nan
-        testPredictPlot[len(trainPredict)+(look_back*2):len(dataset)-2] = testPredict
-
-
-
-        #dataset = scaler.inverse_transform(dataset)
-        num_pred = 30
-        prediction_list = dataset[-look_back:]
-        #print(scaler.inverse_transform(prediction_list))
-
-        for _ in range(num_pred):
-            x = prediction_list[-look_back:]
-            x = np.reshape(x,(1,-1))
-            x = np.reshape(x, (x.shape[0], 1, x.shape[1]))
-            out = model.predict(x)
-            prediction_list = np.append(prediction_list, out)
-        prediction_list = np.reshape(prediction_list,(1,-1))
-        prediction_list = scaler.inverse_transform(prediction_list)
-
-        last_date = len(dataset)
-        prediction_dates = list(range(last_date, last_date + num_pred+1))
-        basic_time = list(range(1, len(dataset)+1))
-        basic_time.extend(prediction_dates)
-
-        prediction_list = prediction_list.flatten()
+            # Main section - Forecast the next num_pred days
+            prediction_list = dataset[-look_back:]
+            for _ in range(num_pred):
+                x = prediction_list[-look_back:]
+                x = np.reshape(x,(1,-1))
+                x = np.reshape(x, (x.shape[0], 1, x.shape[1]))
+                out = model.predict(x)
+                prediction_list = np.append(prediction_list, out)
+            prediction_list = np.reshape(prediction_list,(1,-1))
+            prediction_list = scaler.inverse_transform(prediction_list)
+            prediction_list = prediction_list.flatten() # 2D -> 1D
 
 
-        plt.plot(basic_time[:len(dataset)], scaler.inverse_transform(dataset), label='original')
-        plt.plot(basic_time[:len(trainPredictPlot)], trainPredictPlot, label='train')
-        #plt.plot(basic_time[len(trainPredictPlot) + 1 : len(dataset)-len(trainPredictPlot)], testPredictPlot, label='test')
-        plt.plot(basic_time[:len(trainPredictPlot)], testPredictPlot, label='test')
-        plt.plot(prediction_dates, prediction_list, label='forecast')
-        plt.axvline(x=len(dataset), color='k', linestyle='--')
-        plt.legend()
-        plt.minorticks_on()
-        plt.grid(b=True, which='minor', color='#999999', linestyle='-', alpha=0.2)
-        plt.show()
+            # Prepare veriables to plot
+            basic_time = list(range(1, len(dataset)+1))
+            prediction_dates = list(range(len(dataset), len(dataset) + num_pred+1))
+            basic_time.extend(prediction_dates)
 
+            trainPredictPlot = np.empty_like(dataset)
+            trainPredictPlot[:, :] = np.nan
+            trainPredictPlot[:len(trainPredict)] = trainPredict #git
+
+            testPredictPlot = np.empty_like(dataset)
+            testPredictPlot[:, :] = np.nan
+            testPredictPlot[len(trainPredict)+(look_back*2):len(dataset)-2] = testPredict
+
+
+            kwargs[key] = [[basic_time[:len(dataset)],scaler.inverse_transform(dataset)],
+                            [basic_time[:len(trainPredictPlot)], trainPredictPlot],
+                            [basic_time[:len(trainPredictPlot)], testPredictPlot],
+                            [prediction_dates, prediction_list]]
+
+        return kwargs
 
 P = Process()
-P.LSTM()
+#P.LSTM()
+P.ARIMA(['New cases', 'New deaths'],15)
 #P.ARIMA_test(['New cases','New deaths'])
 
 # P.PRED()
@@ -495,8 +503,9 @@ P.LSTM()
 # PredBase.insert(**cap)
 
 
-
-
+#P = Process()
+#P.ARIMA()
+#P.LSTM()
 '''
 
         look_back = 5
