@@ -3,53 +3,54 @@ import math
 import pandas as pd
 import textwrap
 import os
+import sys
+import warnings
 import ssl
 import smtplib
 import datetime
 import functools
 import matplotlib.pyplot as plt
 
-from sklearn.neural_network import MLPRegressor
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.model_selection import GridSearchCV
-from scipy.interpolate import Rbf
-from sklearn.metrics import r2_score
-
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.layers import LSTM
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import mean_squared_error
-
 from pmdarima.arima import auto_arima
-from pmdarima.arima import ADFTest
 
 from data_base import init_db
 from data_base import MainBase
 from data_base import PredBase
 
-import sys
-import warnings
 
+# Ignore tensorflow warnings
 if not sys.warnoptions:
     warnings.simplefilter("ignore")
-
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
-def format_number(string):
-    return " ".join(digit for digit in textwrap.wrap(
-                                str(string)[::-1], 3))[::-1]
-
-
+# Class of predicting the future of a pandemic in the selected country.
+# Consists of:
+# - methods of data conversion to a form correct for prediction
+# - message template to be sent
+# - function sending the message template
+# - self implemented RBF-network (not used)
+# - methods of preparing data from the database
+# - functions decorators
+# - ARIMA - autoregressive integrated moving average - main forecast function
+# - LSTM - recurrent neural network - second forecast function
+# - minor regression functions (HoltWinters, vector autoregression) (not used)
 class Process:
+
+    # Path to directory where files were placed
     path = os.path.dirname(os.path.abspath(__file__))
+
+    # Names of columns in database.
+    # Used in dynamically download data from database
     fields = ['new_cases', 'total_cases', 'total_recovered', 'active_cases',
                 'new_deaths', 'total_deaths', 'tot_1M', 'fatality_ratio',
                 'total_tests', 'date']
 
+    # Constructor of downloading data from database of selected country
     def __init__(self):
         raw_data = MainBase.get_data()
 
@@ -60,6 +61,13 @@ class Process:
             for key, val in i.items():
                 self.__dict__[key].append(val)
 
+    # Method to easly-read number format (e.g. 7 521 642 instead of 7521642)
+    @staticmethod
+    def format_number(string):
+        return " ".join(digit for digit in textwrap.wrap(
+                                    str(string)[::-1], 3))[::-1]
+
+    # Method making shift in data set - used in self implemented Kohonen network
     @staticmethod
     def preprocessData(data, output, k):
         X, Y = [], []
@@ -71,6 +79,7 @@ class Process:
             Y.append(y_i)
         return np.array(X), np.array(Y)
 
+    # Method making shift in data set - used in LSTM
     @staticmethod
     def create_dataset(dataset, look_back=1):
     	dataX, dataY = [], []
@@ -80,7 +89,66 @@ class Process:
     		dataY.append(dataset[i + look_back, 0])
     	return np.array(dataX), np.array(dataY)
 
+    # Prepare message to sent, written in Polish
+    def raport_to_mail(self):
+        From = "Automatyczny Raport Wirusowy"
+        subject = f'Raport z dnia: {self.date[-1]}'
+        message = """\n
 
+        Dzisiejsze zachorowania: {}\n
+        Dzisiejsze zgony: {}\n
+        ==============================================
+        Wszystkie przypadki zachorowan: {}\n
+        Wszystkie zgony: {}\n
+        Wszyscy wyzdrowiali: {}\n
+        Aktywne przypadki: {}\n
+        Ilość zmarłych na 1M: {}\n
+        Współczynnik smiertelnosci: {}\n
+        Wszystkie wykonane testy: {}\n
+        ------------ Prognoza na dzień {} ----------------
+        Zachorowania: {}\n
+        Zgony: {}
+        """.format(
+                    __class__.format_number(str(self.new_cases[-1])),
+                    __class__.format_number(str(self.new_deaths[-1])),
+                    __class__.format_number(str(self.total_cases[-1])),
+                    __class__.format_number(str(self.total_deaths[-1])),
+                    __class__.format_number(str(self.total_recovered[-1])),
+                    __class__.format_number(str(self.active_cases[-1])),
+                    __class__.format_number(str(self.tot_1M[-1])),
+                    str(self.fatality_ratio[-1]),
+                    __class__.format_number(str(self.total_cases[-1])),
+                    str(self.next_day),
+                    __class__.format_number(str(self.cases_pred)),
+                    __class__.format_number(str(self.deaths_pred)))
+        return 'Subject: {}\n\n{}'.format(subject, message.encode(
+                                    'ascii', 'ignore').decode('ascii'))
+
+    # Method of sending e-mails to list of receivers by the broadcaster (e-mail)
+    #using a special browser key (each argument is in a different files
+    # for privacy and enable easy extension). If you want to send mail to more
+    # the one receiver, separate them using ';'
+    def send_mail(self, broadcaster_handler, receiver_handler,
+                  password_handler):
+
+        port = 465
+        smtp_server = "smtp.gmail.com"
+        try:
+            broadcaster = open(broadcaster_handler).read()
+            receiver = open(receiver_handler).read().split(';')
+            password = open(password_handler).read()
+            message = self.raport_to_mail()
+            del receiver[-1]
+
+            ssl_pol = ssl.create_default_context()
+            with smtplib.SMTP_SSL(smtp_server, port, context=ssl_pol) as serwer:
+                serwer.login(broadcaster, password)
+                serwer.sendmail(broadcaster, receiver, message)
+            print('Mail was sent!')
+        except Exception as e:
+            print('Error:', e)
+
+    # Get only completed columns of database, returned in pandas DataFrame
     def get_data_from_self(self):
         new_data = np.arange(len(self.date))
         d = {'Date': new_data, 'Total cases': self.total_cases,
@@ -94,6 +162,7 @@ class Process:
         df = df.drop(columns=['Tot /1M', 'Total tests'])
         return df
 
+    # Self written a self-organizing map using using unsupervised learning.
     def Kohonen(self, X, klasy, alfa=0.45, il_iter=100):
         srd = sum(i for i in X) / len(X)
 
@@ -123,6 +192,8 @@ class Process:
 
         return W_rep
 
+    # Simple kind of neural network, making a approximate of function using
+    # Kohonen network.
     def RBF(self, X, y, liczba_klas, scaler):
         srd = sum(i for i in X) / len(X)
         Xn = np.array([(srd - X[i]) / np.linalg.norm(X[i])
@@ -158,6 +229,7 @@ class Process:
 
         return y_rad
 
+    # Method making a figures of RBF network
     def RBF_prediction(self, keys):
         data = self.get_data_from_self()
         data = data[:-1]
@@ -192,9 +264,11 @@ class Process:
         self.next_day = (datetime.datetime.strptime(self.date[-1],'%d.%m.%Y') +
                     datetime.timedelta(days=1)).strftime('%d.%m.%Y')
 
-    # dziala
+    # Function to decorate any prediction function, save plots of
+    # original data, train-test set data (optional) and forecast data.
+    # Before each plot save, if the figure exists, delete it.
     def plot_decorator(f):
-        def func(self, *args):
+        def func(self, *args, **kw):
             kwargs = f(self, *args)
 
             for key in kwargs:
@@ -211,38 +285,44 @@ class Process:
                 plt.title('{} ({})'.format(key, self.date[-1]))
                 plt.minorticks_on()
                 plt.grid(b=True, which='minor', color='#999999', linestyle='-',alpha=0.2)
-                #plt.show()
-
-
                 full_path = __class__.path + '\static\{}.png'.format(key)
                 if os.path.isfile(full_path):
                     os.remove(full_path)
 
                 plt.savefig(__class__.path + '\static/{}'.format(key))
 
+            return kwargs
         return func
 
-    # kwargs jest none
+    # Function to decorate any prediction function, saves to database
+    # information on the date, cases and prognosis of deaths.
     def db_decorator(f):
-        def func(self, *args):
+        def func(self, *args, **kw):
             kwargs = f(self, *args)
 
-            for key in kwargs:
-                cases_pred = kwargs['New cases'][3][1][0]
-                deaths_pred = kwargs['New deaths'][3][1][0]
+            cases_pred = int(kwargs['New cases'][3][1][1])
+            deaths_pred = int(kwargs['New deaths'][3][1][1])
 
-                next_day = (datetime.datetime.strptime(self.date[-1],'%d.%m.%Y') +
-                            datetime.timedelta(days=1)).strftime('%d.%m.%Y')
 
-                init_db()
-                cap = {'date': next_day,'cases_pred': cases_pred,
-                        'deaths_pred': deaths_pred}
-                PredBase.insert(**cap)
+            next_day = (datetime.datetime.strptime(self.date[-1],'%d.%m.%Y') +
+                        datetime.timedelta(days=1)).strftime('%d.%m.%Y')
 
+            init_db()
+            cap = {'date': next_day,'cases_pred': cases_pred,
+                    'deaths_pred': deaths_pred}
+            PredBase.insert(**cap)
+
+            return kwargs
         return func
 
-    #@db_decorator
+    # Autoregressive integrated moving average - regressor making a pandemic
+    # forecast. Uses limited memory BFGS optimization (lbfgs). As a parameter
+    # you can provide a prognostic rate (basically uses new cases and of deaths)
+    # and the number of days until the forecast is made. Used decorators
+    # immediately save the result to the database and draw a forecast graph and
+    # original data.
     @plot_decorator
+    @db_decorator
     def ARIMA(self, keys=['New cases', 'New deaths'], days_pred=7):
         pred_dict = {}
         kwargs = {}
@@ -258,7 +338,7 @@ class Process:
 
             prediction = pd.DataFrame(arima_model.predict(n_periods = len(test)), index=test.index)
             x_pred = list(range(len(data), len(data) + days_pred ))
-            #pred_dict[key] = int(prediction.values.tolist()[0][0])
+
             train = [0]
             x_train = [0]
             x_test = [0]
@@ -268,153 +348,19 @@ class Process:
 
             kwargs[key] = [[x, data], [x_train, train], [x_test, test], [x_pred, y_pred]]
 
-
-        self.cases_pred = int(kwargs['New cases'][3][1][0])
-        self.deaths_pred = int(kwargs['New deaths'][3][1][0])
-
-        self.next_day = (datetime.datetime.strptime(self.date[-1],'%d.%m.%Y') +
-                    datetime.timedelta(days=1)).strftime('%d.%m.%Y')
-
-        init_db()
-        cap = {'date': self.next_day,'cases_pred': self.cases_pred,
-                'deaths_pred': self.deaths_pred}
-        PredBase.insert(**cap)
-
         return kwargs
 
-    def raport_to_mail(self):
-        From = "Automatyczny Raport Wirusowy"
-        subject = f'Raport z dnia: {self.date[-1]}'
-        message = """\n
 
-        Dzisiejsze zachorowania: {}\n
-        Dzisiejsze zgony: {}\n
-        ==============================================
-        Wszystkie przypadki zachorowan: {}\n
-        Wszystkie zgony: {}\n
-        Wszyscy wyzdrowiali: {}\n
-        Aktywne przypadki: {}\n
-        Ilość zmarłych na 1M: {}\n
-        Współczynnik smiertelnosci: {}\n
-        Wszystkie wykonane testy: {}\n
-        ------------ Prognoza na dzień {} ----------------
-        Zachorowania: {}\n
-        Zgony: {}
-        """.format(
-                    format_number(str(self.new_cases[-1])),
-                    format_number(str(self.new_deaths[-1])),
-                    format_number(str(self.total_cases[-1])),
-                    format_number(str(self.total_deaths[-1])),
-                    format_number(str(self.total_recovered[-1])),
-                    format_number(str(self.active_cases[-1])),
-                    format_number(str(self.tot_1M[-1])),
-                    str(self.fatality_ratio[-1]),
-                    format_number(str(self.total_cases[-1])),
-                    str(self.next_day),
-                    format_number(str(self.cases_pred)),
-                    format_number(str(self.deaths_pred)))
-        return 'Subject: {}\n\n{}'.format(subject, message.encode(
-                                    'ascii', 'ignore').decode('ascii'))
-
-    def send_mail(self, broadcaster_handler, receiver_handler,
-                  password_handler):
-
-        port = 465
-        smtp_server = "smtp.gmail.com"
-        try:
-            broadcaster = open(broadcaster_handler).read()
-            receiver = open(receiver_handler).read().split(';')
-            password = open(password_handler).read()
-            message = self.raport_to_mail()
-            del receiver[-1]
-
-            ssl_pol = ssl.create_default_context()
-            with smtplib.SMTP_SSL(smtp_server, port, context=ssl_pol) as serwer:
-                serwer.login(broadcaster, password)
-                serwer.sendmail(broadcaster, receiver, message)
-            print('Mail was sent!')
-        except Exception as e:
-            print('Error:', e)
-
-    def ARIMA_test(self, keys, days_pred=7):
-        pred_dict = {}
-        kwargs = {}
-        for key in keys:
-            data = self.get_data_from_self()[key]
-            act = len(data)
-            horizont = pd.DataFrame(np.zeros(days_pred))
-            ndata = pd.concat([data, horizont], ignore_index=True)
-            arima_model =  auto_arima(data[:act], method='lbfgs')
-            test = ndata[act:]
-
-            prediction = pd.DataFrame(arima_model.predict(n_periods = len(test)), index=test.index)
-            #prediction.columns = ['prediction']
-            pred_dict[key] = int(prediction.values.tolist()[0][0])
-            kwargs[key] = [data, prediction]
-
-        return kwargs
-
-    def VAR(self, keys=['New cases','New deaths']):
-        from statsmodels.tsa.vector_ar.var_model import VAR
-        # contrived dataset with dependency
-        data1 = self.get_data_from_self()[keys[0]]
-        data2 = self.get_data_from_self()[keys[1]]
-
-        data = list()
-        for i in range(len(data1)):
-            v1 = data1[i]
-            v2 = data2[i]
-
-            row = [v1, v2]
-            data.append(row)
-
-        # fit model
-        #print(data[-3:])
-        model = VAR(data)
-        model_fit = model.fit()
-        # make prediction
-        yhat = model_fit.forecast(model_fit.y, steps=1)
-        #print('{} - predykcja: {}'.format(VAR.__name__, yhat ))
-        dict ={keys[0]: int(yhat[0][0]), keys[1]: int(yhat[0][1])}
-        return dict
-
-    def HVES(self, keys):
-        from statsmodels.tsa.holtwinters import ExponentialSmoothing as HWES
-        di = {}
-        for k in keys:
-            df = self.get_data_from_self()[k]
-            df = df[10:]
-
-            tmp = 3
-            df_train = df.iloc[:-tmp]
-            df_test = df.iloc[-tmp:]
-            model = HWES(df_train, seasonal_periods=tmp, trend='mul', seasonal='add', initialization_method='estimated')
-            #fitted = model.fit(optimized=True, use_brute=True)
-            fitted = model.fit()
-            #print out the training summary
-            #print(fitted.summary())
-
-            #create an out of sample forcast for the next 12 steps beyond the final data point in the training data set
-            sales_forecast = fitted.forecast(steps=tmp)
-
-            predi = list(sales_forecast[:1])
-            di[k] = int(predi[0])
-        #print('{} - predykcja : {}'.format('HVES', di ))
-        return di
-
-        '''
-        fig = plt.figure()
-        fig.suptitle('Retail Sales of Used Cars in the US (1992-2020)')
-        past, = plt.plot(df_train.index, df_train, 'b.-', label='Sales History')
-        future, = plt.plot(df_test.index, df_test, 'r.-', label='Actual Sales')
-        predicted_future, = plt.plot(df_test.index, sales_forecast, 'g.-', label='Sales Forecast')
-        plt.legend(handles=[past, predicted_future])
-        plt.show()
-        '''
-
-    #@db_decorator
+    # Long short-term memory - artificial recurrent neural network. Split the
+    # data in a 0.75-0.25 (train-test). To learn neural network, used a shift
+    # horizont of 1 day in back (makes the best results). Network consists of
+    # 50 units of LSTM, and a fully connected layers: 1.
+    # Forecast was made in l following way: last downloaded data is given to
+    # network (output of network is append to prediction_list, where in second
+    # iteration last data will be used to feed network).
+    @db_decorator
     @plot_decorator
-    def LSTM(self, num_pred=15, keys=['New cases', 'New deaths']):
+    def LSTM(self, keys=['New cases', 'New deaths'], num_pred=7):
         pred_dict = {}
         kwargs = {}
 
@@ -432,7 +378,7 @@ class Process:
             test_size = len(dataset) - train_size
             train, test = dataset[0:train_size], dataset[train_size:len(dataset)]
 
-            #
+            # Shift horizont
             look_back = 1
             trainX, trainY = __class__.create_dataset(train, look_back)
             testX, testY = __class__.create_dataset(test, look_back)
@@ -492,71 +438,71 @@ class Process:
 
         return kwargs
 
-P = Process()
-#P.LSTM()
-P.ARIMA(['New cases', 'New deaths'],15)
-#P.ARIMA_test(['New cases','New deaths'])
+    # Forecasting method using vector autoregression
+    def VAR(self, keys=['New cases','New deaths']):
+        from statsmodels.tsa.vector_ar.var_model import VAR
+        # contrived dataset with dependency
+        data1 = self.get_data_from_self()[keys[0]]
+        data2 = self.get_data_from_self()[keys[1]]
+
+        data = list()
+        for i in range(len(data1)):
+            v1 = data1[i]
+            v2 = data2[i]
+
+            row = [v1, v2]
+            data.append(row)
+
+        # fit model
+        #print(data[-3:])
+        model = VAR(data)
+        model_fit = model.fit()
+        # make prediction
+        yhat = model_fit.forecast(model_fit.y, steps=1)
+        #print('{} - predykcja: {}'.format(VAR.__name__, yhat ))
+        dict ={keys[0]: int(yhat[0][0]), keys[1]: int(yhat[0][1])}
+        return dict
+
+    # Forecasting method using HoltWinters method
+    def HVES(self, keys):
+        from statsmodels.tsa.holtwinters import ExponentialSmoothing as HWES
+        di = {}
+        for k in keys:
+            df = self.get_data_from_self()[k]
+            df = df[10:]
+
+            tmp = 3
+            df_train = df.iloc[:-tmp]
+            df_test = df.iloc[-tmp:]
+            model = HWES(df_train, seasonal_periods=tmp, trend='mul', seasonal='add', initialization_method='estimated')
+            #fitted = model.fit(optimized=True, use_brute=True)
+            fitted = model.fit()
+            #print out the training summary
+            #print(fitted.summary())
+
+            #create an out of sample forcast for the next 12 steps beyond the final data point in the training data set
+            sales_forecast = fitted.forecast(steps=tmp)
+
+            predi = list(sales_forecast[:1])
+            di[k] = int(predi[0])
+        #print('{} - predykcja : {}'.format('HVES', di ))
+        return di
+
+        '''
+        fig = plt.figure()
+        fig.suptitle('Retail Sales of Used Cars in the US (1992-2020)')
+        past, = plt.plot(df_train.index, df_train, 'b.-', label='Sales History')
+        future, = plt.plot(df_test.index, df_test, 'r.-', label='Actual Sales')
+        predicted_future, = plt.plot(df_test.index, sales_forecast, 'g.-', label='Sales Forecast')
+        plt.legend(handles=[past, predicted_future])
+        plt.show()
+        '''
+
+
+
+
 
 # P.PRED()
 # cap = {'date': '69-69-69','cases_pred': 10,
 #     'deaths_pred': 20}
 # PredBase.insert(**cap)
-
-
-#P = Process()
-#P.ARIMA()
-#P.LSTM()
-'''
-
-        look_back = 5
-        scaler = MinMaxScaler(feature_range=(0, 1))
-        dataset = scaler.fit_transform(data)
-
-
-#       split into train and test sets
-        train_size = int(len(dataset) * 0.95)
-        train = dataset[:train_size]
-        test = dataset[train_size:]
-
-
-        trainX, trainY = create_dataset(train, look_back)
-        testX, testY = create_dataset(test, look_back)
-
-
-        # [samples, time steps, features]
-        trainX = np.reshape(trainX, (trainX.shape[0], 1, trainX.shape[1]))
-        testX = np.reshape(testX, (testX.shape[0], 1, testX.shape[1]))
-
-        model = Sequential()
-        model.add(LSTM(4, input_shape=(1, look_back)))
-        model.add(Dense(1))
-        model.compile(loss='mean_squared_error', optimizer='nadam')
-        model.fit(trainX, trainY, epochs=500, batch_size=32)
-
-
-        trainPredict = model.predict(trainX)
-        testPredict = model.predict(testX)
-
-
-        # invert predictions - original values
-        trainPredict = scaler.inverse_transform(trainPredict)
-        testPredict = scaler.inverse_transform(testPredict)
-
-
-        trainPredictPlot = np.empty_like(dataset)
-        trainPredictPlot[:, :] = np.nan
-        trainPredictPlot[look_back:len(trainPredict)+look_back, :] = trainPredict
-
-        # shift test predictions for plotting
-        testPredictPlot = np.empty_like(dataset)
-        testPredictPlot[:, :] = np.nan
-        testPredictPlot[len(trainPredict)+(look_back*2)+1:len(dataset)-1, :] = testPredict
-
-
-        # plot baseline and predictions
-        plt.plot(data, label='original') #original data
-        plt.plot(trainPredictPlot, label='train') # train data
-        plt.plot(testPredictPlot, label='test')
-        plt.show()
-        plt.legend()
-'''
