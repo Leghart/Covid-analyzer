@@ -18,9 +18,10 @@ Project has created with:
 * BeautifulSoup - to scrap webside with coronavirus data - www.worldometers.info
 * SqlAlchemy - ORM SQL toolkit. Make connect with database, allows insert, remove or
 download data from DB.
-* Tensorflow - Module including a neural networks (in my case: LSTM)
-* Flask
-* SMTPlib
+* Tensorflow - module including a neural networks (in my case: LSTM)
+* Pmdarima - module including a ARIMA model
+* Flask - one of most popular micro framework, allows to manage webside.
+* SMTPlib - module to send e-mails
 
 
 ## Setup
@@ -40,7 +41,7 @@ make the network useless)
 ## Prediction
 The following prediction functions have been implemented in this project: 
 * RBF - Radial basis function is used for aproximate a function. Uses the self-learning
-Kohonen network. 
+Kohonen network - not used (forecast is imposible). 
 * ARIMA - Autoregressive integrated moving average is trying to forecast a future cases. 
 ARIMA models are applied in some cases where data show evidence of non-stationarity in 
 the sense of mean. Actually the best solution which is used. Implemented from pmdarima.
