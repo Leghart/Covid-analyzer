@@ -28,30 +28,33 @@ if not sys.warnoptions:
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
-# Class of predicting the future of a pandemic in the selected country.
-# Consists of:
-# - methods of data conversion to a form correct for prediction
-# - message template to be sent
-# - function sending the message template
-# - self implemented RBF-network (not used)
-# - methods of preparing data from the database
-# - functions decorators
-# - ARIMA - autoregressive integrated moving average - main forecast function
-# - LSTM - recurrent neural network - second forecast function
-# - minor regression functions (HoltWinters, vector autoregression) (not used)
 class Process:
+    """Class of predicting the future of a pandemic in the selected country.
+
+    Consists of:
+    - methods of data conversion to a form correct for prediction
+    - message template to be sent
+    - function sending the message template
+    - self implemented RBF-network (not used)
+    - methods of preparing data from the database
+    - functions decorators
+    - ARIMA - autoregressive integrated moving average - main forecast function
+    - LSTM - recurrent neural network - second forecast function
+    - minor regression functions (HoltWinters, vector autoregression)(not used)
+    """
 
     # Path to directory where files were placed
     path = os.path.dirname(os.path.abspath(__file__))
 
-    # Names of columns in database.
-    # Used in dynamically download data from database
+    """ Names of columns in database.
+    Used in dynamically download data from database. """
     fields = ['new_cases', 'total_cases', 'total_recovered', 'active_cases',
               'new_deaths', 'total_deaths', 'tot_1M', 'fatality_ratio',
               'total_tests', 'date']
 
-    # Constructor of downloading data from database of selected country
     def __init__(self):
+        """ Constructor of downloading data from database of
+            selected country. """
         raw_data = MainBase.get_data()
 
         for key in __class__.fields:
@@ -61,16 +64,17 @@ class Process:
             for key, val in i.items():
                 self.__dict__[key].append(val)
 
-    # Method to easly-read number format (e.g. 7 521 642 instead of 7521642)
     @staticmethod
     def format_number(string):
+        """ Method to easly-read number format
+        (e.g. 7 521 642 instead of 7521642). """
         return " ".join(digit for digit in textwrap.wrap(
                                     str(string)[::-1], 3))[::-1]
 
-    # Method making shift in data set - used in self implemented
-    # Kohonen network
     @staticmethod
     def preprocessData(data, output, k):
+        """ Method making shift in data set - used in self implemented
+        Kohonen network. """
         X, Y = [], []
         for i in range(len(data) - k - 1):
             x_i_mat = np.array(data[i:(i + k)])
@@ -80,9 +84,9 @@ class Process:
             Y.append(y_i)
         return np.array(X), np.array(Y)
 
-    # Method making shift in data set - used in LSTM
     @staticmethod
     def create_dataset(dataset, look_back=1):
+        """ Method making shift in data set - used in LSTM. """
         dataX = []
         dataY = []
         for i in range(len(dataset) - look_back - 1):
@@ -91,15 +95,15 @@ class Process:
             dataY.append(dataset[i + look_back, 0])
         return np.array(dataX), np.array(dataY)
 
-    # Return a special cap of data using in decorators.
     @staticmethod
     def make_cap(x_data, y_data, x_train, y_train, x_test, y_test,
                  x_pred, y_pred):
+        """ Return a special cap of data using in decorators. """
         return [[x_data, y_data], [x_train, y_train], [x_test, y_test],
                 [x_pred, y_pred]]
 
-    # Prepare message to sent, written in Polish
     def raport_to_mail(self):
+        """ Prepare message to sent, written in Polish. """
         From = "Automatyczny Raport Wirusowy"
         subject = f'Raport z dnia: {self.date[-1]}'
         message = """\n
@@ -133,13 +137,12 @@ class Process:
         return 'Subject: {}\n\n{}'.format(subject, message.encode(
                                     'ascii', 'ignore').decode('ascii'))
 
-    # Method of sending e-mails to list of receivers by the broadcaster
-    # (e-mail) using a special browser key (each argument is in a
-    # different files for privacy and enable easy extension). If you want to
-    # send mail to more the one receiver, separate them using ';'
     def send_mail(self, broadcaster_handler, receiver_handler,
                   password_handler):
-
+        """ Method of sending e-mails to list of receivers by the broadcaster
+        (e-mail) using a special browser key (each argument is in a
+        different files for privacy and enable easy extension). If you want to
+        send mail to more the one receiver, separate them using ';'. """
         port = 465
         smtp_serv = "smtp.gmail.com"
         try:
@@ -157,8 +160,9 @@ class Process:
         except Exception as e:
             print('Mail sending error:', e)
 
-    # Get only completed columns of database, returned in pandas DataFrame
     def get_data_from_self(self):
+        """ Get only completed columns of database,
+            returned in pandas DataFrame. """
         new_data = np.arange(len(self.date))
         d = {'Date': new_data, 'Total cases': self.total_cases,
              'New cases': self.new_cases, 'Total deaths': self.total_deaths,
@@ -171,8 +175,9 @@ class Process:
         df = df.drop(columns=['Tot /1M', 'Total tests'])
         return df
 
-    # Self written a self-organizing map using using unsupervised learning.
     def Kohonen(self, X, klasy, alfa=0.45, il_iter=100):
+        """ Self written a self-organizing map
+            using using unsupervised learning. """
         srd = sum(i for i in X) / len(X)
 
         X_std = np.array([(srd - X[i]) / np.linalg.norm(X[i])
@@ -202,9 +207,9 @@ class Process:
 
         return W_rep
 
-    # Simple kind of neural network, making a approximate of function using
-    # Kohonen network.
     def RBF(self, X, y, liczba_klas, scaler):
+        """ Simple kind of neural network, making a
+        approximate of function using Kohonen network. """
         srd = sum(i for i in X) / len(X)
         Xn = np.array([(srd - X[i]) / np.linalg.norm(X[i])
                        for i in range(len(X))])
@@ -239,8 +244,8 @@ class Process:
 
         return y_rad
 
-    # Method making a figures of RBF network
     def RBF_prediction(self, keys):
+        """ Method making a figures of RBF network. """
         data = self.get_data_from_self()
         data = data[:-1]
 
@@ -275,10 +280,10 @@ class Process:
                          '%d.%m.%Y') +
                          datetime.timedelta(days=1)).strftime('%d.%m.%Y')
 
-    # Function to decorate any prediction function, save plots of
-    # original data, train-test set data (optional) and forecast data.
-    # Before each plot save, if the figure exists, delete it.
     def plot_decorator(f):
+        """ Function to decorate any prediction function, save plots of
+        original data, train-test set data (optional) and forecast data.
+        Before each plot save, if the figure exists, delete it. """
         def func(self, *args, **kw):
             kwargs = f(self, *args)
 
@@ -310,39 +315,40 @@ class Process:
                     os.remove(full_path)
 
                 plt.savefig(__class__.path + r'\static/{}'.format(key))
-
+            plt.show()
             return kwargs
         return func
 
-    # Function to decorate any prediction function, saves to database
-    # information on the date, cases and prognosis of deaths.
     def db_decorator(f):
+        """ Function to decorate any prediction function, saves to database
+            information on the date, cases and prognosis of deaths. """
         def func(self, *args, **kw):
             kwargs = f(self, *args)
 
-            cases_pred = int(kwargs['New cases'][3][1][1])
-            deaths_pred = int(kwargs['New deaths'][3][1][1])
+            self.cases_pred = int(kwargs['New cases'][3][1][1])
+            self.deaths_pred = int(kwargs['New deaths'][3][1][1])
 
-            next_day = (datetime.datetime.strptime(self.date[-1], '%d.%m.%Y') +
-                        datetime.timedelta(days=1)).strftime('%d.%m.%Y')
+            self.next_day = ((datetime.datetime.strptime(self.date[-1],
+                              '%d.%m.%Y') + datetime.timedelta(days=1))
+                             .strftime('%d.%m.%Y'))
 
             init_db()
-            cap = {'date': next_day, 'cases_pred': cases_pred,
-                   'deaths_pred': deaths_pred}
+            cap = {'date': self.next_day, 'cases_pred': self.cases_pred,
+                   'deaths_pred': self.deaths_pred}
             PredBase.insert(**cap)
 
             return kwargs
         return func
 
-    # Autoregressive integrated moving average - regressor making a pandemic
-    # forecast. Uses limited memory BFGS optimization (lbfgs). As a parameter
-    # you can provide a prognostic rate (basically uses new cases
-    # and of deaths) and the number of days until the forecast is made.
-    # Used decorators immediately save the result to the database and draw a
-    # forecast graph and original data.
-    @plot_decorator
     @db_decorator
+    @plot_decorator
     def ARIMA(self, keys=['New cases', 'New deaths'], days_pred=7):
+        """ Autoregressive integrated moving average - regressor making a
+        pandemic forecast. Uses limited memory BFGS optimization (lbfgs).
+        As a parameter you can provide a prognostic rate (basically uses
+        new cases and of deaths) and the number of days until the forecast
+        is made. Used decorators immediately save the result to the
+        database and draw a forecast graph and original data. """
         pred_dict = {}
         kwargs = {}
         for key in keys:
@@ -369,16 +375,17 @@ class Process:
                                              x_pred, forecast)
         return kwargs
 
-    # Long short-term memory - artificial recurrent neural network. Split the
-    # data in a 0.75-0.25 (train-test). To learn neural network, used a shift
-    # horizont of 1 day in back (makes the best results). Network consists of
-    # 50 units of LSTM, a fully connected layers: 1 and selected optimizer is
-    # 'nadam'. Forecast was made in l following way: last downloaded data is
-    # given to network (output of network is append to prediction_list,
-    # where in second iteration last data will be used to feed network).
     @db_decorator
     @plot_decorator
     def LSTM(self, keys=['New cases', 'New deaths'], num_pred=7):
+        """ Long short-term memory - artificial recurrent neural network.
+        Split the data in a 0.75-0.25 (train-test). To learn neural
+        network, used a shift horizont of 1 day in back
+        (makes the best results). Network consists of 50 units of LSTM, a
+        fully connected layers: 1 and selected optimizer is 'nadam'.
+        Forecast was made in l following way: last downloaded data is
+        given to network (output of network is append to prediction_list,
+        where in second iteration last data will be used to feed network). """
         pred_dict = {}
         kwargs = {}
         for key in keys:
@@ -458,10 +465,9 @@ class Process:
                                              prediction_list)
         return kwargs
 
-    # Forecasting method using vector autoregression
     def VAR(self, keys=['New cases', 'New deaths']):
+        """ Forecasting method using vector autoregression. """
         from statsmodels.tsa.vector_ar.var_model import VAR
-        # contrived dataset with dependency
         data1 = self.get_data_from_self()[keys[0]]
         data2 = self.get_data_from_self()[keys[1]]
 
@@ -480,8 +486,8 @@ class Process:
         dict = {keys[0]: int(yhat[0][0]), keys[1]: int(yhat[0][1])}
         return dict
 
-    # Forecasting method using HoltWinters method
     def HVES(self, keys):
+        """ Forecasting method using HoltWinters method. """
         from statsmodels.tsa.holtwinters import ExponentialSmoothing as HWES
         di = {}
         for k in keys:
@@ -502,7 +508,10 @@ class Process:
         return di
 
 # P = Process()
-# P.ARIMA()
+# keys = ['New cases']
+# num_pred = 60
+# P.LSTM(keys, num_pred)
+# P.ARIMA(keys, num_pred)
 
 # P.PRED()
 # cap = {'date': '01-01-01','cases_pred': 10,

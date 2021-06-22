@@ -4,22 +4,22 @@ from datetime import date
 import textwrap
 
 
-# Class which is responsible for connect with www page where every day are
-# published data about daily coronavirus cases and scrape data to get
-# nessesery inforamtions.
 class DailyReport:
+    """ Class which is responsible for connect with www page where every day
+    are published data about daily coronavirus cases and scrape data to get
+    nessesery inforamtions. """
 
-    # Constructor downloaded data and show it in terminal
     def __init__(self, country='Poland'):
+        """ Constructor downloaded data and show it in terminal. """
         self.get_actual_data(country)
 
-    # Main feature that connects to www.worldometers.com to download daily
-    # report from the selected country. An error may appear while retrieving
-    # data because when the function is called, the data may not yet be loaded
-    # into the page (will this is signaled by a special message in the
-    # terminal). Downloaded data is saving in existing instance storing main
-    # inforamtions.
     def get_actual_data(self, country='Poland'):
+        """ Main feature that connects to www.worldometers.com to download
+        daily report from the selected country. An error may appear while
+        retrieving data because when the function is called, the data may not
+        yet be loaded into the page (will this is signaled by a special message
+        in the terminal). Downloaded data is saving in existing instance
+        storing main inforamtions. """
         url = 'https://www.worldometers.info/coronavirus/#main_table'
         page = get(url)
         bs = BeautifulSoup(page.content, 'html.parser')
@@ -54,8 +54,9 @@ class DailyReport:
         except ValueError:
             print(f"Data wasn't uploaded on page yet ({self.country}).\n")
 
-    # Return capsule with data to use it as kwargs during insert to database
     def return_cap(self):
+        """ Return capsule with data to use it as kwargs during insert
+        to database. """
         return {'new_cases': self.new_cases, 'total_cases': self.total_cases,
                 'total_recovered': self.total_recovered,
                 'active_cases': self.active_cases,
@@ -64,12 +65,12 @@ class DailyReport:
                 'fatality_ratio': self.fatality_ratio,
                 'total_tests': self.total_tests, 'date': self.date}
 
-    # Saves the data of one country in a csv file. Data taken from:
-    # https://github.com/CSSEGISandData/COVID-19
-    # Args: folder where the relevant data files are located, the new file you
-    # want to save to data for the selected country, country name (check that
-    # the files contain the same name entered).
     def save_data_to_csv(self, ofile, nfile, country):
+        """ Saves the data of one country in a csv file. Data taken from:
+            https://github.com/CSSEGISandData/COVID-19
+            Args: folder where the relevant data files are located, the new
+            file you want to save to data for the selected country, country
+            name (check that the files contain the same name entered). """
         out_file = open(nfile, 'w')
         for filename in os.listdir(ofile):
             with open(os.path.join(ofile, filename), 'r') as f:
@@ -78,8 +79,8 @@ class DailyReport:
                 out = [s for s in lines if country in s]
                 out_file.writelines(["%s\n" % item for item in out])
 
-    # Simple raport in terminal version, showing daily data
     def __str__(self):
+        """ Simple report in terminal, showing daily data. """
         return('Country: {}\nNew cases: {}\nNew deaths: {}\nTotal cases: {}\n'
                'Total deaths: {}\nTotal recovered: {}\nActive cases: {}\n'
                'Tot cases/1M: {}\nFatality ratio: {}\nTotal tests: {}\n'
@@ -96,8 +97,9 @@ class DailyReport:
                 __class__.format_number(str(self.total_tests)),
                 self.date))
 
-    # Change number format to separate thousandth part - format to mail
     @staticmethod
     def format_number(string):
+        """ Change number format to separate thousandth part -
+        format to mail. """
         return " ".join(digit for digit in textwrap.wrap(
                                     str(string)[::-1], 3))[::-1]

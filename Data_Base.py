@@ -28,8 +28,8 @@ def init_db():
     Base.metadata.create_all(bind=engine)
 
 
-# A table storing data about all registered pointers.
 class MainBase(Base):
+    """ A table storing data about all registered pointers. """
     __tablename__ = Country
     date = Column(Text, primary_key=True)
     new_cases = Column(Integer)
@@ -42,31 +42,31 @@ class MainBase(Base):
     fatality_ratio = Column(Float)
     total_tests = Column(Integer)
 
-    # Insert new pointers into the instance fields, using specially prepared
-    # capsule data from scrap.py
     def __init__(self, **kwargs):
+        """ Insert new pointers into the instance fields, using
+        specially prepared capsule data from scrap.py. """
         for key, var in kwargs.items():
             self.__dict__[key] = var
 
 
-# A storing data on all predicted cases of infection and deaths
 class PredBase(Base):
+    """ A storing data on all predicted cases of infection and deaths. """
     __tablename__ = Country + '_pred'
     date = Column(Text, primary_key=True)
     cases_pred = Column(Integer)
     deaths_pred = Column(Integer)
 
-    # Insert new prediction pointers into the instance fields, using specially
-    # prepared capsule data from processing.py
     def __init__(self, **kwargs):
+        """ Insert new prediction pointers into the instance fields, using
+        specially prepared capsule data from processing.py. """
         for key, var in kwargs.items():
             self.__dict__[key] = var
 
 
-# Retrieves the last record from the database on default invocation. If
-# get_date changes to True, get latest date from database (useful when checking
-# for the record is already in the database).
 def get_last_record(cls, get_date=False):
+    """ Retrieves the last record from the database on default invocation. If
+    get_date changes to True, get latest date from database
+    (useful when checking for the record is already in the database). """
     last_rec = [(key, val) for key, val in cls.query.all()[-1]
                 .__dict__.items()]
     if last_rec[0][0] == '_sa_instance_state':
@@ -77,21 +77,21 @@ def get_last_record(cls, get_date=False):
         return last_rec
 
 
-# Insert dictionary as kwargs into selected table.
 def insert(cls, **kwargs):
+    """ Insert dictionary as kwargs into selected table. """
     db_session.add(cls(**kwargs))
     db_session.commit()
 
 
-# Delete record from selected table by given id as date.
 def remove(cls, id):
+    """ Delete record from selected table by given id as date. """
     handler = cls.query.filter_by(date=id).first()
     db_session.delete(handler)
     db_session.commit()
 
 
-# Get all data from selected table
 def get_data(cls):
+    """ Get all data from selected table. """
     data = []
     for row in cls.query.all():
         del row.__dict__['_sa_instance_state']
