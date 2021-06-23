@@ -7,6 +7,7 @@ import sys
 import warnings
 import ssl
 import smtplib
+from functools import wraps
 import datetime
 import functools
 import matplotlib.pyplot as plt
@@ -32,29 +33,38 @@ class Process:
     """Class of predicting the future of a pandemic in the selected country.
 
     Consists of:
-    - methods of data conversion to a form correct for prediction
+    - a method of changing the data format for prediction
     - message template to be sent
     - function sending the message template
-    - self implemented RBF-network (not used)
-    - methods of preparing data from the database
+    - method preparing data from the database
     - functions decorators
     - ARIMA - autoregressive integrated moving average - main forecast function
     - LSTM - recurrent neural network - second forecast function
-    - minor regression functions (HoltWinters, vector autoregression)(not used)
+    - minor regression functions (HoltWinters, vector autoregression)
     """
 
     # Path to directory where files were placed
     path = os.path.dirname(os.path.abspath(__file__))
 
-    """ Names of columns in database.
-    Used in dynamically download data from database. """
+    # Names of columns in database.
+    # Used in dynamically download data from database.
     fields = ['new_cases', 'total_cases', 'total_recovered', 'active_cases',
               'new_deaths', 'total_deaths', 'tot_1M', 'fatality_ratio',
               'total_tests', 'date']
 
     def __init__(self):
-        """ Constructor of downloading data from database of
-            selected country. """
+        """
+        Constructor of downloading data from database of
+        selected country.
+
+        Parameters:
+        -----------
+        - None
+
+        Returns:
+        --------
+        - None
+        """
         raw_data = MainBase.get_data()
 
         for key in __class__.fields:
@@ -66,27 +76,36 @@ class Process:
 
     @staticmethod
     def format_number(string):
-        """ Method to easly-read number format
-        (e.g. 7 521 642 instead of 7521642). """
+        """
+        Method to easly-read number format
+        (e.g. 7 521 642 instead of 7521642).
+
+        Parameters:
+        -----------
+        - string (string) - number to change format
+
+        Returns:
+        --------
+        - (string) - changed string
+        """
         return " ".join(digit for digit in textwrap.wrap(
                                     str(string)[::-1], 3))[::-1]
 
     @staticmethod
-    def preprocessData(data, output, k):
-        """ Method making shift in data set - used in self implemented
-        Kohonen network. """
-        X, Y = [], []
-        for i in range(len(data) - k - 1):
-            x_i_mat = np.array(data[i:(i + k)])
-            x_i = x_i_mat.reshape(x_i_mat.shape[0] * x_i_mat.shape[1])
-            y_i = np.array(data[(i + k):(i + k + 1)][output])
-            X.append(x_i)
-            Y.append(y_i)
-        return np.array(X), np.array(Y)
-
-    @staticmethod
     def create_dataset(dataset, look_back=1):
-        """ Method making shift in data set - used in LSTM. """
+        """
+        Method making shift in data set - used in LSTM.
+
+        Parameters:
+        -----------
+        - dataset (array) - vector of data
+        - look_back (int) - horizont of prediction
+
+        Returns:
+        --------
+        - dataX (array) - Shift x data in vector
+        - dataY (array) - Shift y data in vector
+        """
         dataX = []
         dataY = []
         for i in range(len(dataset) - look_back - 1):
@@ -98,16 +117,46 @@ class Process:
     @staticmethod
     def make_cap(x_data, y_data, x_train, y_train, x_test, y_test,
                  x_pred, y_pred):
-        """ Return a special cap of data using in decorators. """
+        """
+        Return a special cap of data using in decorators. If one of method
+        doesnt use train-test data, will return [0, 0] for train and
+        [0, 0] for test.
+
+        Parameters:
+        -----------
+        - x_data (list) - x values of original data
+        - y_data (list) - y values of original data
+        - x_train (list) - x values of train data
+        - y_train (list) - y values of train data
+        - x_test (list) - x values of test data
+        - y_test (list) - y values of test data
+        - x_pred (list) - x values of forecast data
+        - y_pred (list) - y values of forecast data
+
+        Returns:
+        --------
+        - (list):
+        [[x_data, y_data], [x_train, y_train],
+         [x_test, y_test], [x_pred, y_pred]]
+        """
         return [[x_data, y_data], [x_train, y_train], [x_test, y_test],
                 [x_pred, y_pred]]
 
     def raport_to_mail(self):
-        """ Prepare message to sent, written in Polish. """
+        """
+        Prepare message to sent, written in Polish.
+
+        Parameters:
+        ----------
+        - None
+
+        Returns:
+        --------
+        - message (string) - correct form to send message using SMTPlib
+        """
         From = "Automatyczny Raport Wirusowy"
         subject = f'Raport z dnia: {self.date[-1]}'
         message = """\n
-
         Dzisiejsze zachorowania: {}\n
         Dzisiejsze zgony: {}\n
         ==============================================
@@ -139,10 +188,23 @@ class Process:
 
     def send_mail(self, broadcaster_handler, receiver_handler,
                   password_handler):
-        """ Method of sending e-mails to list of receivers by the broadcaster
+        """
+        Method of sending e-mails to list of receivers by the broadcaster
         (e-mail) using a special browser key (each argument is in a
-        different files for privacy and enable easy extension). If you want to
-        send mail to more the one receiver, separate them using ';'. """
+        different files for privacy and enable easy extension).
+
+        Parameters:
+        -----------
+        - broadcaster_handler (string) - path to the file where the
+        sender's e-mail is saved
+        - receiver_handler (string) - path to the file where the receiver's
+        e-mails are saved, separeted with ';'
+        - password_handler (string) - path to the file, where password is saved
+
+        Returns:
+        --------
+        - None.
+        """
         port = 465
         smtp_serv = "smtp.gmail.com"
         try:
@@ -161,8 +223,19 @@ class Process:
             print('Mail sending error:', e)
 
     def get_data_from_self(self):
-        """ Get only completed columns of database,
-            returned in pandas DataFrame. """
+        """
+        Selects only the completed data from an instance and
+        returns it in a DataFrame.
+
+        Parameters:
+        -----------
+        - keys (list) - pointers to research
+        - days_pred (int) - number of days to look in the future
+
+        Returns:
+        --------
+        - df (DataFrame) - completed columns
+        """
         new_data = np.arange(len(self.date))
         d = {'Date': new_data, 'Total cases': self.total_cases,
              'New cases': self.new_cases, 'Total deaths': self.total_deaths,
@@ -175,115 +248,21 @@ class Process:
         df = df.drop(columns=['Tot /1M', 'Total tests'])
         return df
 
-    def Kohonen(self, X, klasy, alfa=0.45, il_iter=100):
-        """ Self written a self-organizing map
-            using using unsupervised learning. """
-        srd = sum(i for i in X) / len(X)
-
-        X_std = np.array([(srd - X[i]) / np.linalg.norm(X[i])
-                          for i in range(len(X))])
-        gen = np.random.RandomState(100)
-        W_rep = []
-        for i in range(klasy):
-            wtemp = gen.normal(loc=0.0, scale=0.01, size=len(X[0]))
-            W_rep.append(wtemp / np.linalg.norm(wtemp))
-
-        alfa_k = alfa
-        W_mod = []
-        for iter_k in range(il_iter):
-            W_mod = []
-            for i in range(len(X_std)):
-                p_min = [np.linalg.norm(W_rep[j] - X_std[i])
-                         for j in range(klasy)]
-                min_idx = np.where(p_min == np.amin(p_min))
-                W_mod.append(min_idx[0][0])
-            W_mod = np.array(W_mod)
-
-            for i in range(len(X_std)):
-                W_rep[W_mod[i]] = ((W_rep[W_mod[i]] + alfa_k * (
-                                   X_std[i] - W_rep[W_mod[i]])) /
-                                   np.linalg.norm(W_rep[W_mod[i]]))
-            alfa_k = alfa * math.exp(-1.5 * iter_k)
-
-        return W_rep
-
-    def RBF(self, X, y, liczba_klas, scaler):
-        """ Simple kind of neural network, making a
-        approximate of function using Kohonen network. """
-        srd = sum(i for i in X) / len(X)
-        Xn = np.array([(srd - X[i]) / np.linalg.norm(X[i])
-                       for i in range(len(X))])
-
-        C = self.Kohonen(X, liczba_klas)
-
-        N = range(len(Xn))
-        S = max([np.linalg.norm(Xn[i] - Xn[j]) for i in N for j in N])
-
-        r = S / scaler
-
-        PHI = []
-        for N in range(len(Xn)):
-            pom = []
-            for p in range(liczba_klas):
-                odl = np.linalg.norm(Xn[N] - C[p])
-                pom.append(np.exp(-np.square(odl / r)))
-            PHI.append(pom)
-        PHI = np.array(PHI)
-
-        cz1 = np.linalg.pinv(np.dot(np.transpose(PHI), PHI))
-        cz2 = np.dot(np.transpose(PHI), y)
-        w = np.dot(cz1, cz2)
-
-        y_rad = []
-        for i in range(len(Xn)):
-            tmp = 0
-            for j in range(len(w)):
-                tmp += (w[j] * np.exp(-np.square(np.linalg.norm(
-                                                Xn[i] - C[j]) / r)))
-            y_rad.append(tmp)
-
-        return y_rad
-
-    def RBF_prediction(self, keys):
-        """ Method making a figures of RBF network. """
-        data = self.get_data_from_self()
-        data = data[:-1]
-
-        pred_dict = {}
-        for i in keys:
-            plt.figure(i)
-            X, y = Process.preprocessData(data, i, int(len(self.date) * 0.2))
-            print('Calculating prediction for {}'.format(i))
-            y_rad = self.RBF(X, y, 200, 10)
-
-            pred_dict[i] = int(y_rad[-1])
-
-            t1 = range(len(y_rad))
-            t2 = range(len(y))
-
-            plt.plot(t1, y_rad, label="Prediction")
-            plt.plot(t2, y, label="Original data")
-            plt.xlabel("Days since the start of the pandemic")
-            plt.legend()
-            plt.title('{} ({})'.format(i, self.date[-1]))
-            plt.grid()
-
-            full_path = Process.path + r'\static\{}.png'.format(i)
-            if os.path.isfile(full_path):
-                os.remove(full_path)
-
-            plt.savefig(Process.path + r'\static/{}'.format(i))
-        self.cases_pred = pred_dict['New cases']
-        self.deaths_pred = pred_dict['New deaths']
-
-        self.next_day = (datetime.datetime.strptime(self.date[-1],
-                         '%d.%m.%Y') +
-                         datetime.timedelta(days=1)).strftime('%d.%m.%Y')
-
     def plot_decorator(f):
-        """ Function to decorate any prediction function, save plots of
+        """
+        Function to decorate any prediction function, save plots of
         original data, train-test set data (optional) and forecast data.
-        Before each plot save, if the figure exists, delete it. """
+        Before each plot save, if the figure exists, delete it.
+
+        Parameters:
+        -----------
+        - None
+
+        Returns:
+        --------
+        - Called function.
+        """
+        @wraps(f)
         def func(self, *args, **kw):
             kwargs = f(self, *args)
 
@@ -320,8 +299,19 @@ class Process:
         return func
 
     def db_decorator(f):
-        """ Function to decorate any prediction function, saves to database
-            information on the date, cases and prognosis of deaths. """
+        """
+        Function to decorate any prediction function, saves to database
+        information on the date, cases and prognosis of deaths.
+
+        Parameters:
+        -----------
+        - None
+
+        Returns:
+        --------
+        - Called function.
+        """
+        @wraps(f)
         def func(self, *args, **kw):
             kwargs = f(self, *args)
 
@@ -343,12 +333,24 @@ class Process:
     @db_decorator
     @plot_decorator
     def ARIMA(self, keys=['New cases', 'New deaths'], days_pred=7):
-        """ Autoregressive integrated moving average - regressor making a
+        """
+        Autoregressive integrated moving average - regressor making a
         pandemic forecast. Uses limited memory BFGS optimization (lbfgs).
         As a parameter you can provide a prognostic rate (basically uses
         new cases and of deaths) and the number of days until the forecast
         is made. Used decorators immediately save the result to the
-        database and draw a forecast graph and original data. """
+        database and draw a forecast graph and original data.
+
+        Parameters:
+        -----------
+        - keys (list) - pointers to research
+        - days_pred (int) - number of days to look in the future
+
+        Returns:
+        --------
+        - kwargs (dict) - dictionary for each key, icontaining data for
+        drawing graphs for: orignal, train, test and forecast data.
+        """
         pred_dict = {}
         kwargs = {}
         for key in keys:
@@ -377,15 +379,27 @@ class Process:
 
     @db_decorator
     @plot_decorator
-    def LSTM(self, keys=['New cases', 'New deaths'], num_pred=7):
-        """ Long short-term memory - artificial recurrent neural network.
+    def LSTM(self, keys=['New cases', 'New deaths'], days_pred=7):
+        """
+        Long short-term memory - artificial recurrent neural network.
         Split the data in a 0.75-0.25 (train-test). To learn neural
         network, used a shift horizont of 1 day in back
         (makes the best results). Network consists of 50 units of LSTM, a
         fully connected layers: 1 and selected optimizer is 'nadam'.
-        Forecast was made in l following way: last downloaded data is
-        given to network (output of network is append to prediction_list,
-        where in second iteration last data will be used to feed network). """
+        Forecast: last downloaded data is given to network
+        (output of network is append to prediction_list, where in second
+        iteration last data will be used to feed network).
+
+        Parameters:
+        -----------
+        - keys (list) - pointers to research
+        - days_pred (int) - number of days to look in the future
+
+        Returns:
+        --------
+        - kwargs (dict) - dictionary for each key, icontaining data for
+        drawing graphs for: orignal, train, test and forecast data.
+        """
         pred_dict = {}
         kwargs = {}
         for key in keys:
@@ -430,7 +444,7 @@ class Process:
 
             # Main section - Forecast the next num_pred days
             prediction_list = dataset[-look_back:]
-            for _ in range(num_pred):
+            for _ in range(days_pred):
                 x = prediction_list[-look_back:]
                 x = np.reshape(x, (1, -1))
                 x = np.reshape(x, (x.shape[0], 1, x.shape[1]))
@@ -443,7 +457,7 @@ class Process:
             # Prepare veriables to plot
             bsc_time = list(range(1, len(dataset) + 1))
             prediction_dates = list(range(len(dataset),
-                                    len(dataset) + num_pred + 1))
+                                    len(dataset) + days_pred + 1))
             bsc_time.extend(prediction_dates)
 
             trainPredictPlot = np.empty_like(dataset)
@@ -486,7 +500,7 @@ class Process:
         dict = {keys[0]: int(yhat[0][0]), keys[1]: int(yhat[0][1])}
         return dict
 
-    def HVES(self, keys):
+    def HVES(self, keys=['New cases', 'New deaths']):
         """ Forecasting method using HoltWinters method. """
         from statsmodels.tsa.holtwinters import ExponentialSmoothing as HWES
         di = {}
@@ -507,10 +521,13 @@ class Process:
             di[k] = int(predi[0])
         return di
 
-# P = Process()
-# keys = ['New cases']
-# num_pred = 60
-# P.LSTM(keys, num_pred)
+
+'''
+P = Process()
+keys = ['New cases', 'New deaths']
+num_pred = 7
+P.LSTM(keys, num_pred)
+'''
 # P.ARIMA(keys, num_pred)
 
 # P.PRED()

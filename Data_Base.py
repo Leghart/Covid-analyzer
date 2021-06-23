@@ -5,12 +5,11 @@ from sqlalchemy.orm import sessionmaker, relationship, backref
 from sqlalchemy.orm import scoped_session
 from sqlalchemy import create_engine
 import os
-from setup import Country
+from setup import Country, db_name
 import types
 
 
 # Prepare path to database where data will be saved.
-db_name = 'Covid_Data.db'
 direct_path = os.path.dirname(os.path.abspath(__file__))
 path = '\\'.join([direct_path, db_name])
 sql = 'sqlite:///'
@@ -43,8 +42,18 @@ class MainBase(Base):
     total_tests = Column(Integer)
 
     def __init__(self, **kwargs):
-        """ Insert new pointers into the instance fields, using
-        specially prepared capsule data from scrap.py. """
+        """
+        Insert new pointers into the instance fields, using
+        specially prepared capsule data from scrap.py.
+
+        Parameters:
+        -----------
+        - kwargs (dict) - capsule of data containing data for each columns
+
+        Returns:
+        --------
+        - None
+        """
         for key, var in kwargs.items():
             self.__dict__[key] = var
 
@@ -57,16 +66,37 @@ class PredBase(Base):
     deaths_pred = Column(Integer)
 
     def __init__(self, **kwargs):
-        """ Insert new prediction pointers into the instance fields, using
-        specially prepared capsule data from processing.py. """
+        """
+        Insert new prediction pointers into the instance fields, using
+        specially prepared capsule data from processing.py.
+
+        Parameters:
+        -----------
+        - kwargs (dict) - capsule of data containing data for each columns
+
+        Returns:
+        --------
+        - None
+        """
         for key, var in kwargs.items():
             self.__dict__[key] = var
 
 
 def get_last_record(cls, get_date=False):
-    """ Retrieves the last record from the database on default invocation. If
+    """
+    Retrieves the last record from the database on default invocation. If
     get_date changes to True, get latest date from database
-    (useful when checking for the record is already in the database). """
+    (useful when checking for the record is already in the database).
+
+    Parameters:
+    -----------
+    - get_date (bool)
+
+    Returns:
+    --------
+    - (list) - if get_date statement is True, returnin only last date, if
+    get_date is False, returning last row from database
+    """
     last_rec = [(key, val) for key, val in cls.query.all()[-1]
                 .__dict__.items()]
     if last_rec[0][0] == '_sa_instance_state':
@@ -78,20 +108,51 @@ def get_last_record(cls, get_date=False):
 
 
 def insert(cls, **kwargs):
-    """ Insert dictionary as kwargs into selected table. """
+    """
+    Insert dictionary as kwargs into selected table.
+
+    Parameters:
+    -----------
+    - kwargs (dict) - capsule of data to insert as a new row in database
+
+    Returns:
+    --------
+    - None
+    """
     db_session.add(cls(**kwargs))
     db_session.commit()
 
 
 def remove(cls, id):
-    """ Delete record from selected table by given id as date. """
+    """
+    Delete record from selected table by given id as date.
+
+    Parameters:
+    -----------
+    - id (string) - ID of record to delete from database
+
+    Returns:
+    --------
+    - None
+    """
     handler = cls.query.filter_by(date=id).first()
     db_session.delete(handler)
     db_session.commit()
 
 
 def get_data(cls):
-    """ Get all data from selected table. """
+    """
+    Get all data from selected table.
+
+    Parameters:
+    -----------
+    - None
+
+    Returns:
+    --------
+    - data (list) - list where each record is a dictionary. Containing all data
+    from database
+    """
     data = []
     for row in cls.query.all():
         del row.__dict__['_sa_instance_state']
