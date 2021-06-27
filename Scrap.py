@@ -13,7 +13,7 @@ class DailyReport:
 
     def __init__(self, country='Poland'):
         """
-        Constructor downloaded data and show it in terminal.
+        Constructor downloaded data.
 
         Parameters:
         -----------

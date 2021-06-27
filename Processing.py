@@ -1,3 +1,9 @@
+"""
+Data processing module, forecast calculation and charting.
+It includes several different forecasting methods, not all of them are used,
+but all of them are them have the same calling, so if you want to try one of
+them just call it and print result.
+"""
 import numpy as np
 import math
 import pandas as pd
@@ -16,7 +22,10 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.layers import LSTM
 from sklearn.preprocessing import MinMaxScaler
+
 from pmdarima.arima import auto_arima
+from statsmodels.tsa.holtwinters import ExponentialSmoothing as HWES
+from statsmodels.tsa.statespace.sarimax import SARIMAX
 
 from data_base import init_db
 from data_base import MainBase
@@ -363,21 +372,19 @@ class Process:
             arima_model = auto_arima(data[:act], method='lbfgs')
             test = ndata[act:]
 
-            prediction = pd.DataFrame(arima_model.predict(n_periods=len(test)),
-                                      index=test.index)
+            forecast = pd.DataFrame(arima_model.predict(n_periods=len(test)),
+                                      index=test.index).values.flatten()
 
             x_data = list(range(1, len(data) + 1))
-
-            x_pred = list(range(len(data), len(data) + days_pred))
-            forecast = prediction.values.flatten()
+            x_forecast = list(range(len(data), len(data) + days_pred))
 
             kwargs[key] = __class__.make_cap(x_data, data,
                                              [0], [0],
                                              [0], [0],
-                                             x_pred, forecast)
+                                             x_forecast, forecast)
         return kwargs
 
-    @db_decorator
+    #@db_decorator
     @plot_decorator
     def LSTM(self, keys=['New cases', 'New deaths'], days_pred=7):
         """
@@ -412,7 +419,7 @@ class Process:
             dataset = scaler.fit_transform(data)
 
             # Set a train-test factor and split data
-            train_size = int(len(dataset) * 0.75)
+            train_size = int(len(dataset) * 0.65)
             test_size = len(dataset) - train_size
 
             train = dataset[0:train_size]
@@ -429,7 +436,7 @@ class Process:
 
             # Create LSTM network and learn using train-set
             model = Sequential()
-            model.add(LSTM(50, input_shape=(1, look_back)))
+            model.add(LSTM(25, input_shape=(1, look_back)))
             model.add(Dense(1))
             model.compile(loss='mean_squared_error', optimizer='nadam')
             model.fit(trainX, trainY, epochs=500, batch_size=64, verbose=1)
@@ -442,7 +449,7 @@ class Process:
             trainPredict = scaler.inverse_transform(trainPredict)
             testPredict = scaler.inverse_transform(testPredict)
 
-            # Main section - Forecast the next num_pred days
+            # Forecast the next num_pred days
             prediction_list = dataset[-look_back:]
             for _ in range(days_pred):
                 x = prediction_list[-look_back:]
@@ -479,7 +486,69 @@ class Process:
                                              prediction_list)
         return kwargs
 
-    def VAR(self, keys=['New cases', 'New deaths']):
+    @plot_decorator
+    def HVES(self, keys=['New cases', 'New deaths'], days_pred=7):
+        """
+        Forecasting method using HoltWinters method. If the days_pred is
+        greater, the forecast is worse.
+        Parameters:
+        -----------
+        - keys (list) - pointers to research
+        - days_pred (int) - number of days to look in the future
+
+        Returns:
+        --------
+        - kwargs (dict) - dictionary for each key, icontaining data for
+        drawing graphs for: orignal, train, test and forecast data.
+        """
+        kwargs = {}
+        for key in keys:
+            data = self.get_data_from_self()[key]
+            data = data[10:]
+
+            x_train = data.iloc[:-days_pred]
+            model = HWES(x_train, seasonal_periods=days_pred, trend='mul',
+                         seasonal='mul', initialization_method='heuristic')
+
+            fitted = model.fit()
+            forecast = fitted.forecast(steps=days_pred)
+            forecast = np.array(forecast, int)
+
+            x_data = list(range(1, len(data) + 1))
+            x_forecast = list(range(len(data), len(data) + days_pred))
+
+            kwargs[key] = __class__.make_cap(x_data, data,
+                                             [0], [0],
+                                             [0], [0],
+                                             x_forecast, forecast)
+        return kwargs
+
+    def SARIMA(self, keys=['New cases', 'New deaths'], days_pred=7):
+        kwargs = {}
+        for key in keys:
+            data = self.get_data_from_self()[key]
+            train = 0.9
+            split = round(len(data)*train)
+            training, testing = data[:split], data[split:]
+
+            model = SARIMAX(training, order=(1, 1, 1),
+                            seasonal_order=(2, 1, 1, 10),
+                            enforce_stationarity=True,
+                            enforce_invertibility=True,
+                            mle_regression=False)
+            model_fit = model.fit(disp=False)
+            K = len(testing)
+            forecast = model_fit.forecast(K)
+            print(forecast)
+
+            plt.plot(forecast, 'red')
+            plt.plot(data, 'b')
+            plt.axvline(x=data.index[split], color='black')
+            plt.show()
+
+        return kwargs
+
+    def VAR(self, keys=['New cases', 'New deaths'], days_pred=7):
         """ Forecasting method using vector autoregression. """
         from statsmodels.tsa.vector_ar.var_model import VAR
         data1 = self.get_data_from_self()[keys[0]]
@@ -496,39 +565,21 @@ class Process:
         model = VAR(data)
         model_fit = model.fit()
 
-        yhat = model_fit.forecast(model_fit.y, steps=1)
+        yhat = model_fit.forecast(model_fit.y, steps=days_pred)
+        print('yhat: ', yhat)
         dict = {keys[0]: int(yhat[0][0]), keys[1]: int(yhat[0][1])}
         return dict
-
-    def HVES(self, keys=['New cases', 'New deaths']):
-        """ Forecasting method using HoltWinters method. """
-        from statsmodels.tsa.holtwinters import ExponentialSmoothing as HWES
-        di = {}
-        for k in keys:
-            df = self.get_data_from_self()[k]
-            df = df[10:]
-
-            tmp = 3
-            df_train = df.iloc[:-tmp]
-            df_test = df.iloc[-tmp:]
-            model = HWES(df_train, seasonal_periods=tmp, trend='mul',
-                         seasonal='add', initialization_method='estimated')
-
-            fitted = model.fit()
-            sales_forecast = fitted.forecast(steps=tmp)
-
-            predi = list(sales_forecast[:1])
-            di[k] = int(predi[0])
-        return di
 
 
 '''
 P = Process()
 keys = ['New cases', 'New deaths']
-num_pred = 7
+num_pred = 2
+#P.SARIMA(keys, num_pred)
 P.LSTM(keys, num_pred)
+P.HVES(keys, num_pred)
+P.ARIMA(keys, num_pred)
 '''
-# P.ARIMA(keys, num_pred)
 
 # P.PRED()
 # cap = {'date': '01-01-01','cases_pred': 10,

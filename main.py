@@ -9,7 +9,6 @@ from data_base import PredBase, MainBase, init_db
 from setup import Country, scrap_time, Forecast_hor
 
 
-
 if __name__ == '__main__':
     today_ = datetime.datetime.today().strftime('%d.%m.%Y')
 
