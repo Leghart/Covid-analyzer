@@ -324,8 +324,8 @@ class Process:
         def func(self, *args, **kw):
             kwargs = f(self, *args)
 
-            self.cases_pred = int(kwargs['New cases'][3][1][1])
-            self.deaths_pred = int(kwargs['New deaths'][3][1][1])
+            self.cases_pred = int(kwargs['New cases'][3][1][0])
+            self.deaths_pred = int(kwargs['New deaths'][3][1][0])
 
             self.next_day = ((datetime.datetime.strptime(self.date[-1],
                               '%d.%m.%Y') + datetime.timedelta(days=1))
@@ -376,7 +376,7 @@ class Process:
                                       index=test.index).values.flatten()
 
             x_data = list(range(1, len(data) + 1))
-            x_forecast = list(range(len(data), len(data) + days_pred))
+            x_forecast = list(range(len(data) + 1, len(data) + days_pred + 1))
 
             kwargs[key] = __class__.make_cap(x_data, data,
                                              [0], [0],
@@ -384,7 +384,6 @@ class Process:
                                              x_forecast, forecast)
         return kwargs
 
-    #@db_decorator
     @plot_decorator
     def LSTM(self, keys=['New cases', 'New deaths'], days_pred=7):
         """
@@ -515,7 +514,7 @@ class Process:
             forecast = np.array(forecast, int)
 
             x_data = list(range(1, len(data) + 1))
-            x_forecast = list(range(len(data), len(data) + days_pred))
+            x_forecast = list(range(len(data) + 1, len(data) + days_pred + 1))
 
             kwargs[key] = __class__.make_cap(x_data, data,
                                              [0], [0],
@@ -571,15 +570,15 @@ class Process:
         return dict
 
 
-'''
+
 P = Process()
 keys = ['New cases', 'New deaths']
-num_pred = 2
-#P.SARIMA(keys, num_pred)
+num_pred = 7
+# #P.SARIMA(keys, num_pred)
 P.LSTM(keys, num_pred)
-P.HVES(keys, num_pred)
-P.ARIMA(keys, num_pred)
-'''
+#P.HVES(keys, num_pred)
+#P.ARIMA(keys, num_pred)
+
 
 # P.PRED()
 # cap = {'date': '01-01-01','cases_pred': 10,

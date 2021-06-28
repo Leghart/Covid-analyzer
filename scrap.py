@@ -107,22 +107,27 @@ class DailyReport:
         data = data[idx:end_idx]
 
         try:
+            self.new_cases = int(data[2].replace('+', '').replace(',', ''))
+        except ValueError:
+            self.new_cases = 0
+
+        try:
+            self.new_deaths = int(data[4].replace('+', '').replace(',', ''))
+        except ValueError:
+            self.new_deaths = 0
+
+        finally:
             self.country = data[0]
             self.total_cases = int(data[1].replace(',', ''))
-            self.new_cases = int(data[2].replace('+', '').replace(',', ''))
             self.total_deaths = int(data[3].replace(',', ''))
-            self.new_deaths = int(data[4].replace('+', '').replace(',', ''))
             self.total_recovered = int(data[5].replace(',', ''))
             self.active_cases = int(data[7].replace('+', '').replace(',', ''))
             self.tot_1M = int(data[9].replace('+', '').replace(',', ''))
             self.total_tests = int(data[11].replace(',', ''))
             self.fatality_ratio = round(self.total_deaths /
                                         self.total_cases * 100, 2)
-
             self.date = date.today().strftime("%d.%m.%Y")
 
-        except ValueError:
-            print(f"Data wasn't uploaded on page yet ({self.country}).\n")
 
     def return_cap(self):
         """
