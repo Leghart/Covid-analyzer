@@ -151,6 +151,32 @@ class Process:
         return [[x_data, y_data], [x_train, y_train], [x_test, y_test],
                 [x_pred, y_pred]]
 
+    def get_new_recovered(self):
+        """
+        Return the list of daily recoveries generated as difference between
+        current and previous value.
+
+        Parameters:
+        -----------
+        - None
+
+        Returns:
+        --------
+        - new_daily_rec (list) - list of daily recovered
+        """
+        data_total_rec = self.total_recovered
+        new_daily_rec = []
+        for i in range(len(data_total_rec)):
+            try:
+                result = data_total_rec[i + 1] - data_total_rec[i]
+                new_daily_rec.append(result)
+            except IndexError:
+                break
+
+        new_daily_rec.insert(0,0) # set first value as 0
+        #return pd.DataFrame(data=new_daily_rec)
+        return new_daily_rec
+
     def raport_to_mail(self):
         """
         Prepare message to sent, written in Polish.
@@ -227,9 +253,10 @@ class Process:
             with smtplib.SMTP_SSL(smtp_serv, port, context=ssl_pol) as serwer:
                 serwer.login(broadcaster, password)
                 serwer.sendmail(broadcaster, receiver, message)
-            print('Mail was sent!')
         except Exception as e:
             print('Mail sending error:', e)
+        else:
+            print('Mail was sent!')
 
     def get_data_from_self(self):
         """
@@ -252,7 +279,8 @@ class Process:
              'Total recovered': self.total_recovered,
              'Active cases': self.active_cases, 'Tot /1M': self.tot_1M,
              'Fatality ratio': self.fatality_ratio,
-             'Total tests': self.total_tests}
+             'Total tests': self.total_tests,
+             'New recovered': self.get_new_recovered()}
         df = pd.DataFrame(data=d)
         df = df.drop(columns=['Tot /1M', 'Total tests'])
         return df
@@ -324,6 +352,7 @@ class Process:
         def func(self, *args, **kw):
             kwargs = f(self, *args)
 
+            # take only first value of forecast to save in database
             self.cases_pred = int(kwargs['New cases'][3][1][0])
             self.deaths_pred = int(kwargs['New deaths'][3][1][0])
 
@@ -364,11 +393,11 @@ class Process:
         kwargs = {}
         for key in keys:
             data = self.get_data_from_self()[key]
+
             act = len(data)
             horizont = pd.DataFrame(np.zeros(days_pred))
             ndata = pd.concat([data, horizont], ignore_index=True)
 
-            print('Calculating prediction for {}'.format(key))
             arima_model = auto_arima(data[:act], method='lbfgs')
             test = ndata[act:]
 
@@ -382,6 +411,7 @@ class Process:
                                              [0], [0],
                                              [0], [0],
                                              x_forecast, forecast)
+
         return kwargs
 
     @plot_decorator
@@ -572,12 +602,18 @@ class Process:
 
 
 P = Process()
-keys = ['New cases', 'New deaths']
+keys = ['New cases', 'New recovered']
+#keys = ['New cases']
 num_pred = 7
+
+
+
+
+#print(P.get_new_recovered())
 # #P.SARIMA(keys, num_pred)
-P.LSTM(keys, num_pred)
+# P.LSTM(keys, num_pred)
 #P.HVES(keys, num_pred)
-#P.ARIMA(keys, num_pred)
+# P.ARIMA(keys, num_pred)
 
 
 # P.PRED()
