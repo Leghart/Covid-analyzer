@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup
 from requests import get
 from datetime import date
+import os
 import textwrap
 
 
@@ -157,7 +158,7 @@ class DailyReport:
 
         Parameters:
         -----------
-        - ofile (string) - path to file where the relevant data files
+        - ofile (string) - path to folder where the daily data files
         are located
         - nfile (string) - path to file where you want to save data for the
         selected country
