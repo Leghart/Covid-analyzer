@@ -13,7 +13,7 @@ from setup import Country, scrap_time, Forecast_hor
 if __name__ == '__main__':
     today_ = datetime.datetime.today().strftime('%d.%m.%Y')
 
-    keys = ['New cases', 'New deaths']
+    keys = ['New cases', 'New deaths', 'New recovered']
     message = 'Wait for a next scrap...'
 
     while(True):
@@ -34,8 +34,8 @@ if __name__ == '__main__':
                     MainBase.insert(**kwargs)
 
                     Pl = Process()
-                    Pl.ARIMA(keys, Forecast_hor)
-                    #Pl.LSTM(15,keys)
+                    Pl.ARIMA(keys=keys, days_pred=Forecast_hor,
+                             config_plot=True, config_db=True)
 
                     broad_file = Pl.path + r'\broadcaster'
                     rec_file = Pl.path + r'\receiver'

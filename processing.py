@@ -16,6 +16,7 @@ import smtplib
 from functools import wraps
 import datetime
 import functools
+import inspect
 import matplotlib.pyplot as plt
 
 from tensorflow.keras.models import Sequential
@@ -36,6 +37,8 @@ from data_base import PredBase
 if not sys.warnoptions:
     warnings.simplefilter("ignore")
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
+
 
 
 class Process:
@@ -285,6 +288,24 @@ class Process:
         df = df.drop(columns=['Tot /1M', 'Total tests'])
         return df
 
+    @staticmethod
+    def decorator_selector(pointer, *args, **kwargs):
+        """
+
+        """
+
+        if len(args) != 0:
+            dict_tmp = {'config_plot': 2,
+                        'config_db': 3}
+            return args[dict_tmp[pointer]]
+
+        elif len(kwargs) != 0:
+            return kwargs[pointer]
+        else:
+            return False
+
+
+
     def plot_decorator(f):
         """
         Function to decorate any prediction function, save plots of
@@ -301,38 +322,43 @@ class Process:
         """
         @wraps(f)
         def func(self, *args, **kw):
-            kwargs = f(self, *args)
+            kwargs = f(self, *args, **kw)
 
-            for key in kwargs:
-                plt.figure(key)
-                plt.plot(kwargs[key][0][0],
-                         kwargs[key][0][1],
-                         label='Original data')
-                plt.plot(kwargs[key][1][0],
-                         kwargs[key][1][1],
-                         label='Train data')
-                plt.plot(kwargs[key][2][0],
-                         kwargs[key][2][1],
-                         label='Test data')
-                plt.plot(kwargs[key][3][0],
-                         kwargs[key][3][1],
-                         label='Forecast')
-                plt.axvline(x=len(kwargs[key][0][0]),
-                            color='k',
-                            linestyle='--')
-                plt.legend()
-                plt.title('{} ({})'.format(key, self.date[-1]))
-                plt.minorticks_on()
-                plt.grid(b=True, which='minor', color='#999999',
-                         linestyle='-', alpha=0.2)
+            config = __class__.decorator_selector('config_plot', *args, **kw)
 
-                full_path = __class__.path + r'\static\{}.png'.format(key)
-                if os.path.isfile(full_path):
-                    os.remove(full_path)
+            if config:
+                for key in kwargs:
+                    plt.figure(key)
+                    plt.plot(kwargs[key][0][0],
+                             kwargs[key][0][1],
+                             label='Original data')
+                    plt.plot(kwargs[key][1][0],
+                             kwargs[key][1][1],
+                             label='Train data')
+                    plt.plot(kwargs[key][2][0],
+                             kwargs[key][2][1],
+                             label='Test data')
+                    plt.plot(kwargs[key][3][0],
+                             kwargs[key][3][1],
+                             label='Forecast')
+                    plt.axvline(x=len(kwargs[key][0][0]),
+                                color='k',
+                                linestyle='--')
+                    plt.legend()
+                    plt.title('{} ({})'.format(key, self.date[-1]))
+                    plt.minorticks_on()
+                    plt.grid(b=True, which='minor', color='#999999',
+                             linestyle='-', alpha=0.2)
 
-                plt.savefig(__class__.path + r'\static/{}'.format(key))
-            plt.show()
-            return kwargs
+                    full_path = __class__.path + r'\static\{}.png'.format(key)
+                    if os.path.isfile(full_path):
+                        os.remove(full_path)
+
+                    plt.savefig(__class__.path + r'\static/{}'.format(key))
+                plt.show()
+                return kwargs
+            else:
+                return kwargs
         return func
 
     def db_decorator(f):
@@ -350,27 +376,36 @@ class Process:
         """
         @wraps(f)
         def func(self, *args, **kw):
-            kwargs = f(self, *args)
+            kwargs = f(self, *args, **kw)
 
-            # take only first value of forecast to save in database
-            self.cases_pred = int(kwargs['New cases'][3][1][0])
-            self.deaths_pred = int(kwargs['New deaths'][3][1][0])
+            config = __class__.decorator_selector('config_db', *args, **kw)
 
-            self.next_day = ((datetime.datetime.strptime(self.date[-1],
-                              '%d.%m.%Y') + datetime.timedelta(days=1))
-                             .strftime('%d.%m.%Y'))
+            if config:
+                # take only first value of forecast to save in database
+                try:
+                    self.cases_pred = int(kwargs['New cases'][3][1][0])
+                    self.deaths_pred = int(kwargs['New deaths'][3][1][0])
 
-            init_db()
-            cap = {'date': self.next_day, 'cases_pred': self.cases_pred,
-                   'deaths_pred': self.deaths_pred}
-            PredBase.insert(**cap)
+                    self.next_day = ((datetime.datetime.strptime(self.date[-1],
+                                      '%d.%m.%Y') + datetime.timedelta(days=1))
+                                     .strftime('%d.%m.%Y'))
+                except KeyError:
+                    return kwargs
 
-            return kwargs
+                init_db()
+                cap = {'date': self.next_day, 'cases_pred': self.cases_pred,
+                       'deaths_pred': self.deaths_pred}
+                PredBase.insert(**cap)
+                print('Database was updated.')
+                return kwargs
+            else:
+                return kwargs
         return func
 
-    @db_decorator
     @plot_decorator
-    def ARIMA(self, keys=['New cases', 'New deaths'], days_pred=7):
+    @db_decorator
+    def ARIMA(self, keys=['New cases', 'New deaths'], days_pred=7,
+              config_plot=True, config_db=True):
         """
         Autoregressive integrated moving average - regressor making a
         pandemic forecast. Uses limited memory BFGS optimization (lbfgs).
@@ -415,7 +450,9 @@ class Process:
         return kwargs
 
     @plot_decorator
-    def LSTM(self, keys=['New cases', 'New deaths'], days_pred=7):
+    @db_decorator
+    def LSTM(self, keys=['New cases', 'New deaths'], days_pred=7,
+             config_plot=True, config_db=False):
         """
         Long short-term memory - artificial recurrent neural network.
         Split the data in a 0.75-0.25 (train-test). To learn neural
@@ -516,7 +553,9 @@ class Process:
         return kwargs
 
     @plot_decorator
-    def HVES(self, keys=['New cases', 'New deaths'], days_pred=7):
+    @db_decorator
+    def HVES(self, keys=['New cases', 'New deaths'], days_pred=7,
+             config_plot=True, config_db=False):
         """
         Forecasting method using HoltWinters method. If the days_pred is
         greater, the forecast is worse.
@@ -552,7 +591,10 @@ class Process:
                                              x_forecast, forecast)
         return kwargs
 
-    def SARIMA(self, keys=['New cases', 'New deaths'], days_pred=7):
+    @plot_decorator
+    @db_decorator
+    def SARIMA(self, keys=['New cases', 'New deaths'], days_pred=7,
+               config_plot=True, config_db=False):
         kwargs = {}
         for key in keys:
             data = self.get_data_from_self()[key]
@@ -577,7 +619,10 @@ class Process:
 
         return kwargs
 
-    def VAR(self, keys=['New cases', 'New deaths'], days_pred=7):
+    @plot_decorator
+    @db_decorator
+    def VAR(self, keys=['New cases', 'New deaths'], days_pred=7,
+             config_plot=True, config_db=False):
         """ Forecasting method using vector autoregression. """
         from statsmodels.tsa.vector_ar.var_model import VAR
         data1 = self.get_data_from_self()[keys[0]]
@@ -600,20 +645,18 @@ class Process:
         return dict
 
 
-
 P = Process()
-keys = ['New cases', 'New recovered']
-#keys = ['New cases']
-num_pred = 7
-
+#keys = ['New cases', 'New recovered', 'New deaths']
+keys1 = ['New cases']
+num_pred1 = 5
 
 
 
 #print(P.get_new_recovered())
 # #P.SARIMA(keys, num_pred)
 # P.LSTM(keys, num_pred)
-#P.HVES(keys, num_pred)
-# P.ARIMA(keys, num_pred)
+#P.HVES(keys=keys1, days_pred=num_pred1, config_plot=True, config_db=False)
+#P.ARIMA(keys, num_pred, True, False)
 
 
 # P.PRED()
