@@ -5,6 +5,25 @@ import os
 import textwrap
 
 
+class ScrapException(Exception):
+    """
+    Parent class for custom exceptions, informs about problems
+    with download data.
+    """
+    def __init__(self, text, description):
+        super().__init(text)
+        self.description = description
+
+    def __str__(self):
+        return '{} - {}'.format(super().__str__, self.description)
+
+class NoData(ScrapException):
+    """
+    Exception informs about no data on the website at the moment.
+    """
+    def __init__(self, text):
+        super().__init(text, 'Data was not uploaded yet.')
+
 class DailyReport:
     """
     Class which is responsible for connect with www page where every day
@@ -129,6 +148,8 @@ class DailyReport:
                                         self.total_cases * 100, 2)
             self.date = date.today().strftime("%d.%m.%Y")
 
+        if self.new_cases == 0 and self.new_deaths == 0:
+            raise NoData
 
     def return_cap(self):
         """
