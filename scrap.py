@@ -19,7 +19,7 @@ class ScrapException(Exception):
         return '{}: {}'.format(super().__str__(), self.description)
 
 
-class Data(ScrapException):
+class CollectDataException(ScrapException):
     """
     Exception informs about no data on the website at the moment.
     """
@@ -153,7 +153,7 @@ class DailyReport:
             self.date = date.today().strftime("%d.%m.%Y")
 
         if self.new_cases == 0 and self.new_deaths == 0:
-            raise Data('Collect data error')
+            raise CollectDataException('Collect data error')
 
     def return_cap(self):
         """

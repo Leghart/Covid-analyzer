@@ -4,7 +4,7 @@ import time
 
 from processing import Process
 from scrap import DailyReport as DR
-from scrap import Data
+from scrap import CollectDataException
 
 from data_base import PredBase, MainBase
 from setup import Country, scrap_time, Forecast_hor
@@ -40,7 +40,7 @@ if __name__ == '__main__':
                     Pl.send_mail(broad_file, rec_file, pass_file)
                     exit()
 
-        except Data as e:
+        except CollectDataException as e:
             print(e)
 
         except Exception as e:
