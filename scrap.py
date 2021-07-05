@@ -3,29 +3,7 @@ from requests import get
 from datetime import date
 import os
 import textwrap
-
-
-class ScrapException(Exception):
-    """
-    Parent class for custom exceptions, informs about problems
-    with download data.
-    """
-
-    def __init__(self, text, description):
-        super().__init__(text)
-        self.description = description
-
-    def __str__(self):
-        return '{}: {}'.format(super().__str__(), self.description)
-
-
-class CollectDataException(ScrapException):
-    """
-    Exception informs about no data on the website at the moment.
-    """
-
-    def __init__(self, text):
-        super().__init__(text, 'Data wasnt uploaded yet. Please try later ...')
+from exceptions import *
 
 
 class DailyReport:

@@ -1,0 +1,22 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+numpy = "*"
+pandas = "*"
+bs4 = "*"
+requests = "*"
+matplotlib = "*"
+statsmodels = "*"
+pmdarima = "*"
+tensorflow = "*"
+sklearn = "*"
+flask = "*"
+sqlalchemy = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.8"
