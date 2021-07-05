@@ -10,19 +10,23 @@ class ScrapException(Exception):
     Parent class for custom exceptions, informs about problems
     with download data.
     """
+
     def __init__(self, text, description):
-        super().__init(text)
+        super().__init__(text)
         self.description = description
 
     def __str__(self):
-        return '{} - {}'.format(super().__str__, self.description)
+        return '{}: {}'.format(super().__str__(), self.description)
 
-class NoData(ScrapException):
+
+class Data(ScrapException):
     """
     Exception informs about no data on the website at the moment.
     """
+
     def __init__(self, text):
-        super().__init(text, 'Data was not uploaded yet.')
+        super().__init__(text, 'Data wasnt uploaded yet. Please try later ...')
+
 
 class DailyReport:
     """
@@ -63,17 +67,17 @@ class DailyReport:
                'Total deaths: {}\nTotal recovered: {}\nActive cases: {}\n'
                'Tot cases/1M: {}\nFatality ratio: {}\nTotal tests: {}\n'
                'Data recived: {}'.format(
-                self.country,
-                __class__.format_number(str(self.new_cases)),
-                __class__.format_number(str(self.new_deaths)),
-                __class__.format_number(str(self.total_cases)),
-                __class__.format_number(str(self.total_deaths)),
-                __class__.format_number(str(self.total_recovered)),
-                __class__.format_number(str(self.active_cases)),
-                __class__.format_number(str(self.tot_1M)),
-                str(self.fatality_ratio),
-                __class__.format_number(str(self.total_tests)),
-                self.date))
+                   self.country,
+                   __class__.format_number(str(self.new_cases)),
+                   __class__.format_number(str(self.new_deaths)),
+                   __class__.format_number(str(self.total_cases)),
+                   __class__.format_number(str(self.total_deaths)),
+                   __class__.format_number(str(self.total_recovered)),
+                   __class__.format_number(str(self.active_cases)),
+                   __class__.format_number(str(self.tot_1M)),
+                   str(self.fatality_ratio),
+                   __class__.format_number(str(self.total_tests)),
+                   self.date))
 
     @staticmethod
     def format_number(string):
@@ -90,7 +94,7 @@ class DailyReport:
         - (string) - changed string
         """
         return " ".join(digit for digit in textwrap.wrap(
-                                    str(string)[::-1], 3))[::-1]
+            str(string)[::-1], 3))[::-1]
 
     def get_actual_data(self, country='Poland'):
         """
@@ -149,7 +153,7 @@ class DailyReport:
             self.date = date.today().strftime("%d.%m.%Y")
 
         if self.new_cases == 0 and self.new_deaths == 0:
-            raise NoData
+            raise Data('Collect data error')
 
     def return_cap(self):
         """
