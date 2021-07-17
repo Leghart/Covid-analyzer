@@ -8,7 +8,6 @@ import datetime
 import os
 import smtplib
 import ssl
-import textwrap
 from functools import wraps
 
 import matplotlib.pyplot as plt
@@ -23,6 +22,7 @@ from tensorflow.keras.models import Sequential
 
 from data_base import MainBase, PredBase, init_db
 from exceptions import ForbiddenValue
+from scrap import format_number
 
 
 class Process:
@@ -80,22 +80,6 @@ class Process:
                 self.__dict__[key].append(val)
 
     @staticmethod
-    def format_number(string):
-        """
-        Method to easly-read number format
-        (e.g. 7 521 642 instead of 7521642).
-
-        Parameters:
-        -----------
-        - string (string) - number to change format
-
-        Returns:
-        --------
-        - (string) - changed string
-        """
-        return " ".join(digit for digit in textwrap.wrap(str(string)[::-1], 3))[::-1]
-
-    @staticmethod
     def create_dataset(dataset, look_back=1):
         """
         Method making shift in data set - used in LSTM.
@@ -113,7 +97,7 @@ class Process:
         dataX = []
         dataY = []
         for i in range(len(dataset) - look_back - 1):
-            a = dataset[i : (i + look_back), 0]
+            a = dataset[i : (i + look_back), 0]  # noqa: E203
             dataX.append(a)
             dataY.append(dataset[i + look_back, 0])
         return np.array(dataX), np.array(dataY)
@@ -211,18 +195,18 @@ class Process:
         Zachorowania: {}\n
         Zgony: {}
         """.format(
-            __class__.format_number(str(self.new_cases[-1])),
-            __class__.format_number(str(self.new_deaths[-1])),
-            __class__.format_number(str(self.total_cases[-1])),
-            __class__.format_number(str(self.total_deaths[-1])),
-            __class__.format_number(str(self.total_recovered[-1])),
-            __class__.format_number(str(self.active_cases[-1])),
-            __class__.format_number(str(self.tot_1M[-1])),
+            format_number(str(self.new_cases[-1])),
+            format_number(str(self.new_deaths[-1])),
+            format_number(str(self.total_cases[-1])),
+            format_number(str(self.total_deaths[-1])),
+            format_number(str(self.total_recovered[-1])),
+            format_number(str(self.active_cases[-1])),
+            format_number(str(self.tot_1M[-1])),
             str(self.fatality_ratio[-1]),
-            __class__.format_number(str(self.total_cases[-1])),
+            format_number(str(self.total_cases[-1])),
             str(self.next_day),
-            __class__.format_number(str(self.cases_pred)),
-            __class__.format_number(str(self.deaths_pred)),
+            format_number(str(self.cases_pred)),
+            format_number(str(self.deaths_pred)),
         )
         return "Subject: {}\n\n{}".format(
             subject, message.encode("ascii", "ignore").decode("ascii")
@@ -595,7 +579,7 @@ class Process:
             train_size = int(len(dataset) * 0.65)
 
             train = dataset[0:train_size]
-            test = dataset[train_size : len(dataset)]
+            test = dataset[train_size : len(dataset)]  # noqa: E203
 
             # Shift horizont
             look_back = 1
