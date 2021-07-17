@@ -4,41 +4,25 @@ It includes several different forecasting methods, not all of them are used,
 but all of them are them have the same calling, so if you want to try one of
 them just call it and print result.
 """
-import numpy as np
-import math
-import pandas as pd
-import textwrap
-import os
-import sys
-import warnings
-import ssl
-import smtplib
-from functools import wraps
 import datetime
-import functools
-import inspect
+import os
+import smtplib
+import ssl
+import textwrap
+from functools import wraps
+
 import matplotlib.pyplot as plt
-
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.layers import LSTM
-from sklearn.preprocessing import MinMaxScaler
-
+import numpy as np
+import pandas as pd
 from pmdarima.arima import auto_arima
+from sklearn.preprocessing import MinMaxScaler
 from statsmodels.tsa.holtwinters import ExponentialSmoothing as HWES
 from statsmodels.tsa.statespace.sarimax import SARIMAX
+from tensorflow.keras.layers import LSTM, Dense
+from tensorflow.keras.models import Sequential
 
-from data_base import init_db
-from data_base import MainBase
-from data_base import PredBase
-
-
-# Ignore tensorflow warnings
-if not sys.warnoptions:
-    warnings.simplefilter("ignore")
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
-
+from data_base import MainBase, PredBase, init_db
+from exceptions import ForbiddenValue
 
 
 class Process:
@@ -60,9 +44,18 @@ class Process:
 
     # Names of columns in database.
     # Used in dynamically download data from database.
-    fields = ['new_cases', 'total_cases', 'total_recovered', 'active_cases',
-              'new_deaths', 'total_deaths', 'tot_1M', 'fatality_ratio',
-              'total_tests', 'date']
+    fields = [
+        "new_cases",
+        "total_cases",
+        "total_recovered",
+        "active_cases",
+        "new_deaths",
+        "total_deaths",
+        "tot_1M",
+        "fatality_ratio",
+        "total_tests",
+        "date",
+    ]
 
     def __init__(self):
         """
@@ -100,8 +93,7 @@ class Process:
         --------
         - (string) - changed string
         """
-        return " ".join(digit for digit in textwrap.wrap(
-                                    str(string)[::-1], 3))[::-1]
+        return " ".join(digit for digit in textwrap.wrap(str(string)[::-1], 3))[::-1]
 
     @staticmethod
     def create_dataset(dataset, look_back=1):
@@ -121,14 +113,22 @@ class Process:
         dataX = []
         dataY = []
         for i in range(len(dataset) - look_back - 1):
-            a = dataset[i:(i + look_back), 0]
+            a = dataset[i : (i + look_back), 0]
             dataX.append(a)
             dataY.append(dataset[i + look_back, 0])
         return np.array(dataX), np.array(dataY)
 
     @staticmethod
-    def make_cap(x_data, y_data, x_train, y_train, x_test, y_test,
-                 x_pred, y_pred):
+    def make_cap(
+        x_data,
+        y_data,
+        x_train,
+        y_train,
+        x_test,
+        y_test,
+        x_pred,
+        y_pred,
+    ):
         """
         Return a special cap of data using in decorators. If one of method
         doesnt use train-test data, will return [0, 0] for train and
@@ -151,8 +151,12 @@ class Process:
         [[x_data, y_data], [x_train, y_train],
          [x_test, y_test], [x_pred, y_pred]]
         """
-        return [[x_data, y_data], [x_train, y_train], [x_test, y_test],
-                [x_pred, y_pred]]
+        return [
+            [x_data, y_data],
+            [x_train, y_train],
+            [x_test, y_test],
+            [x_pred, y_pred],
+        ]
 
     def get_new_recovered(self):
         """
@@ -176,8 +180,7 @@ class Process:
             except IndexError:
                 break
 
-        new_daily_rec.insert(0,0) # set first value as 0
-        #return pd.DataFrame(data=new_daily_rec)
+        new_daily_rec.insert(0, 0)  # set first value as 0
         return new_daily_rec
 
     def raport_to_mail(self):
@@ -192,8 +195,7 @@ class Process:
         --------
         - message (string) - correct form to send message using SMTPlib
         """
-        From = "Automatyczny Raport Wirusowy"
-        subject = f'Raport z dnia: {self.date[-1]}'
+        subject = f"Raport z dnia: {self.date[-1]}"
         message = """\n
         Dzisiejsze zachorowania: {}\n
         Dzisiejsze zgony: {}\n
@@ -209,23 +211,29 @@ class Process:
         Zachorowania: {}\n
         Zgony: {}
         """.format(
-                    __class__.format_number(str(self.new_cases[-1])),
-                    __class__.format_number(str(self.new_deaths[-1])),
-                    __class__.format_number(str(self.total_cases[-1])),
-                    __class__.format_number(str(self.total_deaths[-1])),
-                    __class__.format_number(str(self.total_recovered[-1])),
-                    __class__.format_number(str(self.active_cases[-1])),
-                    __class__.format_number(str(self.tot_1M[-1])),
-                    str(self.fatality_ratio[-1]),
-                    __class__.format_number(str(self.total_cases[-1])),
-                    str(self.next_day),
-                    __class__.format_number(str(self.cases_pred)),
-                    __class__.format_number(str(self.deaths_pred)))
-        return 'Subject: {}\n\n{}'.format(subject, message.encode(
-                                    'ascii', 'ignore').decode('ascii'))
+            __class__.format_number(str(self.new_cases[-1])),
+            __class__.format_number(str(self.new_deaths[-1])),
+            __class__.format_number(str(self.total_cases[-1])),
+            __class__.format_number(str(self.total_deaths[-1])),
+            __class__.format_number(str(self.total_recovered[-1])),
+            __class__.format_number(str(self.active_cases[-1])),
+            __class__.format_number(str(self.tot_1M[-1])),
+            str(self.fatality_ratio[-1]),
+            __class__.format_number(str(self.total_cases[-1])),
+            str(self.next_day),
+            __class__.format_number(str(self.cases_pred)),
+            __class__.format_number(str(self.deaths_pred)),
+        )
+        return "Subject: {}\n\n{}".format(
+            subject, message.encode("ascii", "ignore").decode("ascii")
+        )
 
-    def send_mail(self, broadcaster_handler, receiver_handler,
-                  password_handler):
+    def send_mail(
+        self,
+        broadcaster_handler,
+        receiver_handler,
+        password_handler,
+    ):
         """
         Method of sending e-mails to list of receivers by the broadcaster
         (e-mail) using a special browser key (each argument is in a
@@ -247,7 +255,7 @@ class Process:
         smtp_serv = "smtp.gmail.com"
         try:
             broadcaster = open(broadcaster_handler).read()
-            receiver = open(receiver_handler).read().split(';')
+            receiver = open(receiver_handler).read().split(";")
             password = open(password_handler).read()
             message = self.raport_to_mail()
             del receiver[-1]
@@ -257,9 +265,9 @@ class Process:
                 serwer.login(broadcaster, password)
                 serwer.sendmail(broadcaster, receiver, message)
         except Exception as e:
-            print('Mail sending error:', e)
+            print("Mail sending error:", e)
         else:
-            print('Mail was sent!')
+            print("Mail was sent!")
 
     def get_data_from_self(self):
         """
@@ -276,35 +284,52 @@ class Process:
         - df (DataFrame) - completed columns
         """
         new_data = np.arange(len(self.date))
-        d = {'Date': new_data, 'Total cases': self.total_cases,
-             'New cases': self.new_cases, 'Total deaths': self.total_deaths,
-             'New deaths': self.new_deaths,
-             'Total recovered': self.total_recovered,
-             'Active cases': self.active_cases, 'Tot /1M': self.tot_1M,
-             'Fatality ratio': self.fatality_ratio,
-             'Total tests': self.total_tests,
-             'New recovered': self.get_new_recovered()}
+        d = {
+            "Date": new_data,
+            "Total cases": self.total_cases,
+            "New cases": self.new_cases,
+            "Total deaths": self.total_deaths,
+            "New deaths": self.new_deaths,
+            "Total recovered": self.total_recovered,
+            "Active cases": self.active_cases,
+            "Tot /1M": self.tot_1M,
+            "Fatality ratio": self.fatality_ratio,
+            "Total tests": self.total_tests,
+            "New recovered": self.get_new_recovered(),
+        }
         df = pd.DataFrame(data=d)
-        df = df.drop(columns=['Tot /1M', 'Total tests'])
+        df = df.drop(columns=["Tot /1M", "Total tests"])
         return df
 
     @staticmethod
     def decorator_selector(pointer, *args, **kwargs):
         """
+        Function to detect parameter of decorator configuration.
+        Return the same value state as decorated function was called.
+        Parameters could be given as list or dictionary.
 
+        Parameters:
+        -----------
+        - pointer (string) - key to select which configuration will be detected
+        - args (list) - list of arguments. If the called function uses only a
+        list, variable dict_tmp should be checked to see if the configuration
+        keys are in the correct position.
+        - kwargs (dict) - dictionary of configuration value states
+
+        Return:
+        -------
+        - logic state (bool) - True if used argument had True state or False if
+        has not.
         """
 
         if len(args) != 0:
-            dict_tmp = {'config_plot': 2,
-                        'config_db': 3}
+            dict_tmp = {"config_plot": 2, "config_db": 3}
             return args[dict_tmp[pointer]]
 
         elif len(kwargs) != 0:
             return kwargs[pointer]
         else:
             return False
-
-
 
     def plot_decorator(f):
         """
@@ -320,45 +345,62 @@ class Process:
         --------
         - Called function.
         """
+
         @wraps(f)
         def func(self, *args, **kw):
             kwargs = f(self, *args, **kw)
 
-            config = __class__.decorator_selector('config_plot', *args, **kw)
-
+            config = __class__.decorator_selector("config_plot", *args, **kw)
             if config:
                 for key in kwargs:
                     plt.figure(key)
-                    plt.plot(kwargs[key][0][0],
-                             kwargs[key][0][1],
-                             label='Original data')
-                    plt.plot(kwargs[key][1][0],
-                             kwargs[key][1][1],
-                             label='Train data')
-                    plt.plot(kwargs[key][2][0],
-                             kwargs[key][2][1],
-                             label='Test data')
-                    plt.plot(kwargs[key][3][0],
-                             kwargs[key][3][1],
-                             label='Forecast')
-                    plt.axvline(x=len(kwargs[key][0][0]),
-                                color='k',
-                                linestyle='--')
-                    plt.legend()
-                    plt.title('{} ({})'.format(key, self.date[-1]))
-                    plt.minorticks_on()
-                    plt.grid(b=True, which='minor', color='#999999',
-                             linestyle='-', alpha=0.2)
+                    plt.plot(
+                        kwargs[key][0][0],
+                        kwargs[key][0][1],
+                        label="Original data",
+                    )
 
-                    full_path = __class__.path + r'\static\{}.png'.format(key)
+                    plt.plot(
+                        kwargs[key][1][0],
+                        kwargs[key][1][1],
+                        label="Train data",
+                    )
+                    plt.plot(
+                        kwargs[key][2][0],
+                        kwargs[key][2][1],
+                        label="Test data",
+                    )
+                    plt.plot(
+                        kwargs[key][3][0],
+                        kwargs[key][3][1],
+                        label="Forecast",
+                    )
+                    plt.axvline(
+                        x=len(kwargs[key][0][0]),
+                        color="k",
+                        linestyle="--",
+                    )
+                    plt.legend()
+                    plt.title("{} ({})".format(key, self.date[-1]))
+                    plt.minorticks_on()
+                    plt.grid(
+                        b=True,
+                        which="minor",
+                        color="#999999",
+                        linestyle="-",
+                        alpha=0.2,
+                    )
+
+                    full_path = __class__.path + r"\static\{}.png".format(key)
                     if os.path.isfile(full_path):
                         os.remove(full_path)
 
-                    plt.savefig(__class__.path + r'\static/{}'.format(key))
+                    plt.savefig(__class__.path + r"\static/{}".format(key))
                 plt.show()
                 return kwargs
             else:
-                return kwargs
+                return 0
+
         return func
 
     def db_decorator(f):
@@ -374,38 +416,100 @@ class Process:
         --------
         - Called function.
         """
+
         @wraps(f)
         def func(self, *args, **kw):
             kwargs = f(self, *args, **kw)
 
-            config = __class__.decorator_selector('config_db', *args, **kw)
+            config = __class__.decorator_selector("config_db", *args, **kw)
 
             if config:
                 # take only first value of forecast to save in database
                 try:
-                    self.cases_pred = int(kwargs['New cases'][3][1][0])
-                    self.deaths_pred = int(kwargs['New deaths'][3][1][0])
+                    self.cases_pred = int(kwargs["New cases"][3][1][0])
+                    self.deaths_pred = int(kwargs["New deaths"][3][1][0])
+                    self.next_day = datetime.datetime.strptime(
+                        self.date[-1], "%d.%m.%Y"
+                    ) + datetime.timedelta(days=1)
+                    self.next_day = self.next_day.strftime("%d.%m.%Y")
 
-                    self.next_day = ((datetime.datetime.strptime(self.date[-1],
-                                      '%d.%m.%Y') + datetime.timedelta(days=1))
-                                     .strftime('%d.%m.%Y'))
                 except KeyError:
                     return kwargs
 
+                try:
+                    if self.cases_pred < 0:
+                        raise ForbiddenValue(
+                            "The predicted value of new cases has a forbidden\
+                        value (less than 0). The result has been rounded to 0."
+                        )
+                except ForbiddenValue as e:
+                    self.cases_pred = 0
+                    print(e)
+
+                try:
+                    if self.deaths_pred < 0:
+                        raise ForbiddenValue(
+                            "The predicted value of new deaths has a forbidden\
+                        value (less than 0). The result has been rounded to 0."
+                        )
+                except ForbiddenValue as e:
+                    self.deaths_pred = 0
+                    print(e)
+
                 init_db()
-                cap = {'date': self.next_day, 'cases_pred': self.cases_pred,
-                       'deaths_pred': self.deaths_pred}
+                cap = {
+                    "date": self.next_day,
+                    "cases_pred": self.cases_pred,
+                    "deaths_pred": self.deaths_pred,
+                }
                 PredBase.insert(**cap)
-                print('Database was updated.')
+                print("Database was updated.")
                 return kwargs
             else:
                 return kwargs
+
         return func
+
+    # TODO
+    def charts_comparison(self, key, days_pred, *args):
+        result_funcs = [func(key, days_pred, False, False) for func in args]
+
+        plt.figure(figsize=(15, 5))
+        pointer = key[0]
+
+        for i in range(len(result_funcs)):
+            plt.plot(
+                result_funcs[i][pointer][0][0],
+                result_funcs[i][pointer][0][1],
+                label="original",
+            )  # original
+            plt.plot(
+                result_funcs[i][pointer][1][0],
+                result_funcs[i][pointer][1][1],
+                label="train",
+            )  # train
+            plt.plot(
+                result_funcs[i][pointer][2][0],
+                result_funcs[i][pointer][2][1],
+                label="test",
+            )  # test
+            plt.plot(
+                result_funcs[i][pointer][3][0],
+                result_funcs[i][pointer][3][1],
+                label="forecast",
+            )  # pred
+        plt.legend()
+        plt.show()
 
     @plot_decorator
     @db_decorator
-    def ARIMA(self, keys=['New cases', 'New deaths'], days_pred=7,
-              config_plot=True, config_db=True):
+    def ARIMA(
+        self,
+        keys=["New cases", "New deaths"],
+        days_pred=7,
+        config_plot=True,
+        config_db=True,
+    ):
         """
         Autoregressive integrated moving average - regressor making a
         pandemic forecast. Uses limited memory BFGS optimization (lbfgs).
@@ -424,7 +528,6 @@ class Process:
         - kwargs (dict) - dictionary for each key, icontaining data for
         drawing graphs for: orignal, train, test and forecast data.
         """
-        pred_dict = {}
         kwargs = {}
         for key in keys:
             data = self.get_data_from_self()[key]
@@ -433,26 +536,31 @@ class Process:
             horizont = pd.DataFrame(np.zeros(days_pred))
             ndata = pd.concat([data, horizont], ignore_index=True)
 
-            arima_model = auto_arima(data[:act], method='lbfgs')
+            arima_model = auto_arima(data[:act], method="lbfgs")
             test = ndata[act:]
 
-            forecast = pd.DataFrame(arima_model.predict(n_periods=len(test)),
-                                      index=test.index).values.flatten()
+            forecast = pd.DataFrame(
+                arima_model.predict(n_periods=len(test)), index=test.index
+            ).values.flatten()
 
             x_data = list(range(1, len(data) + 1))
             x_forecast = list(range(len(data) + 1, len(data) + days_pred + 1))
 
-            kwargs[key] = __class__.make_cap(x_data, data,
-                                             [0], [0],
-                                             [0], [0],
-                                             x_forecast, forecast)
+            kwargs[key] = __class__.make_cap(
+                x_data, data, [0], [0], [0], [0], x_forecast, forecast
+            )
 
         return kwargs
 
     @plot_decorator
     @db_decorator
-    def LSTM(self, keys=['New cases', 'New deaths'], days_pred=7,
-             config_plot=True, config_db=False):
+    def LSTM(
+        self,
+        keys=["New cases", "New deaths"],
+        days_pred=7,
+        config_plot=True,
+        config_db=False,
+    ):
         """
         Long short-term memory - artificial recurrent neural network.
         Split the data in a 0.75-0.25 (train-test). To learn neural
@@ -473,7 +581,6 @@ class Process:
         - kwargs (dict) - dictionary for each key, icontaining data for
         drawing graphs for: orignal, train, test and forecast data.
         """
-        pred_dict = {}
         kwargs = {}
         for key in keys:
             # Get data
@@ -486,10 +593,9 @@ class Process:
 
             # Set a train-test factor and split data
             train_size = int(len(dataset) * 0.65)
-            test_size = len(dataset) - train_size
 
             train = dataset[0:train_size]
-            test = dataset[train_size:len(dataset)]
+            test = dataset[train_size : len(dataset)]
 
             # Shift horizont
             look_back = 1
@@ -504,7 +610,7 @@ class Process:
             model = Sequential()
             model.add(LSTM(25, input_shape=(1, look_back)))
             model.add(Dense(1))
-            model.compile(loss='mean_squared_error', optimizer='nadam')
+            model.compile(loss="mean_squared_error", optimizer="nadam")
             model.fit(trainX, trainY, epochs=500, batch_size=64, verbose=1)
 
             # Use fitted network to predict a train and test sets
@@ -529,33 +635,40 @@ class Process:
 
             # Prepare veriables to plot
             bsc_time = list(range(1, len(dataset) + 1))
-            prediction_dates = list(range(len(dataset),
-                                    len(dataset) + days_pred + 1))
+            prediction_dates = list(range(len(dataset), len(dataset) + days_pred + 1))
             bsc_time.extend(prediction_dates)
 
             trainPredictPlot = np.empty_like(dataset)
             trainPredictPlot[:, :] = np.nan
-            trainPredictPlot[:len(trainPredict)] = trainPredict
+            trainPredictPlot[: len(trainPredict)] = trainPredict
 
             testPredictPlot = np.empty_like(dataset)
             testPredictPlot[:, :] = np.nan
-            testPredictPlot[len(trainPredict) +
-                            (look_back * 2): len(dataset) - 2] = testPredict
+            testPredictPlot[
+                len(trainPredict) + (look_back * 2) : len(dataset) - 2
+            ] = testPredict
 
-            kwargs[key] = __class__.make_cap(bsc_time[:len(dataset)],
-                                             scaler.inverse_transform(dataset),
-                                             bsc_time[:len(trainPredictPlot)],
-                                             trainPredictPlot,
-                                             bsc_time[:len(trainPredictPlot)],
-                                             testPredictPlot,
-                                             prediction_dates,
-                                             prediction_list)
+            kwargs[key] = __class__.make_cap(
+                bsc_time[: len(dataset)],
+                scaler.inverse_transform(dataset),
+                bsc_time[: len(trainPredictPlot)],
+                trainPredictPlot,
+                bsc_time[: len(trainPredictPlot)],
+                testPredictPlot,
+                prediction_dates,
+                prediction_list,
+            )
         return kwargs
 
-    @plot_decorator
-    @db_decorator
-    def HVES(self, keys=['New cases', 'New deaths'], days_pred=7,
-             config_plot=True, config_db=False):
+    # @plot_decorator
+    # @db_decorator
+    def HVES(
+        self,
+        keys=["New cases", "New deaths"],
+        days_pred=7,
+        config_plot=True,
+        config_db=False,
+    ):
         """
         Forecasting method using HoltWinters method. If the days_pred is
         greater, the forecast is worse.
@@ -575,56 +688,74 @@ class Process:
             data = data[10:]
 
             x_train = data.iloc[:-days_pred]
-            model = HWES(x_train, seasonal_periods=days_pred, trend='mul',
-                         seasonal='mul', initialization_method='heuristic')
+            model = HWES(
+                x_train,
+                seasonal_periods=days_pred,
+                trend="mul",
+                seasonal="mul",
+                initialization_method="heuristic",
+            )
 
             fitted = model.fit()
             forecast = fitted.forecast(steps=days_pred)
-            forecast = np.array(forecast, int)
+            forecast = list(np.array(forecast, int))
 
             x_data = list(range(1, len(data) + 1))
             x_forecast = list(range(len(data) + 1, len(data) + days_pred + 1))
 
-            kwargs[key] = __class__.make_cap(x_data, data,
-                                             [0], [0],
-                                             [0], [0],
-                                             x_forecast, forecast)
+            data = data.values.tolist()
+            kwargs[key] = __class__.make_cap(
+                x_data, data, [0], [0], [0], [0], x_forecast, forecast
+            )
         return kwargs
 
     @plot_decorator
     @db_decorator
-    def SARIMA(self, keys=['New cases', 'New deaths'], days_pred=7,
-               config_plot=True, config_db=False):
+    def SARIMA(
+        self,
+        keys=["New cases", "New deaths"],
+        days_pred=7,
+        config_plot=True,
+        config_db=False,
+    ):
         kwargs = {}
         for key in keys:
             data = self.get_data_from_self()[key]
             train = 0.9
-            split = round(len(data)*train)
+            split = round(len(data) * train)
             training, testing = data[:split], data[split:]
 
-            model = SARIMAX(training, order=(1, 1, 1),
-                            seasonal_order=(2, 1, 1, 10),
-                            enforce_stationarity=True,
-                            enforce_invertibility=True,
-                            mle_regression=False)
+            model = SARIMAX(
+                training,
+                order=(1, 1, 1),
+                seasonal_order=(2, 1, 1, 10),
+                enforce_stationarity=True,
+                enforce_invertibility=True,
+                mle_regression=False,
+            )
             model_fit = model.fit(disp=False)
             K = len(testing)
             forecast = model_fit.forecast(K)
             print(forecast)
 
-            plt.plot(forecast, 'red')
-            plt.plot(data, 'b')
-            plt.axvline(x=data.index[split], color='black')
+            plt.plot(forecast, "red")
+            plt.plot(data, "b")
+            plt.axvline(x=data.index[split], color="black")
             plt.show()
-
         return kwargs
 
     @plot_decorator
     @db_decorator
-    def VAR(self, keys=['New cases', 'New deaths'], days_pred=7,
-             config_plot=True, config_db=False):
-        """ Forecasting method using vector autoregression. """
+    def VAR(
+        self,
+        keys=["New cases", "New deaths"],
+        days_pred=7,
+        config_plot=True,
+        config_db=False,
+    ):
+        """Forecasting method using vector autoregression."""
         from statsmodels.tsa.vector_ar.var_model import VAR
+
         data1 = self.get_data_from_self()[keys[0]]
         data2 = self.get_data_from_self()[keys[1]]
 
@@ -640,26 +771,71 @@ class Process:
         model_fit = model.fit()
 
         yhat = model_fit.forecast(model_fit.y, steps=days_pred)
-        print('yhat: ', yhat)
+        print("yhat: ", yhat)
         dict = {keys[0]: int(yhat[0][0]), keys[1]: int(yhat[0][1])}
         return dict
 
 
 P = Process()
-#keys = ['New cases', 'New recovered', 'New deaths']
-keys1 = ['New cases']
-num_pred1 = 5
+# keys = ['New cases', 'New recovered', 'New deaths']
+keys = ["New cases"]
+num_pred = 5
+# P.ARIMA(keys, num_pred, False, False)
+# P.charts_comparison(keys, num_pred, P.HVES, P.ARIMA)
 
-
-
-#print(P.get_new_recovered())
+# print(P.get_new_recovered())
 # #P.SARIMA(keys, num_pred)
-# P.LSTM(keys, num_pred)
-#P.HVES(keys=keys1, days_pred=num_pred1, config_plot=True, config_db=False)
-#P.ARIMA(keys, num_pred, True, False)
+# P.LSTM(keys, num_pred, True, False)
+
+
+# P.ARIMA(keys, num_pred, True, False)
 
 
 # P.PRED()
 # cap = {'date': '01-01-01','cases_pred': 10,
 #     'deaths_pred': 20}
 # PredBase.insert(**cap)
+
+"""
+class PlotDecorator:
+    def __init__(self, func):
+        self.func = func
+
+    def __call__(self, *args, **kwargs):
+        result = self.func(*args, **kwargs)
+        #config = __class__.decorator_selector('config_plot', *args, **kwargs)
+        config = True
+        if config:
+            for key in result:
+                plt.figure(key)
+                plt.plot(result[key][0][0],
+                         result[key][0][1],
+                         label='Original data')
+                plt.plot(result[key][1][0],
+                         result[key][1][1],
+                         label='Train data')
+                plt.plot(result[key][2][0],
+                         result[key][2][1],
+                         label='Test data')
+                plt.plot(result[key][3][0],
+                         result[key][3][1],
+                         label='Forecast')
+                plt.axvline(x=len(result[key][0][0]),
+                            color='k',
+                            linestyle='--')
+                plt.legend()
+                plt.title('{} ({})'.format(key, self.date[-1]))
+                plt.minorticks_on()
+                plt.grid(b=True, which='minor', color='#999999',
+                         linestyle='-', alpha=0.2)
+
+                full_path = __class__.path + r'\static\{}.png'.format(key)
+                if os.path.isfile(full_path):
+                    os.remove(full_path)
+
+                plt.savefig(__class__.path + r'\static/{}'.format(key))
+                plt.show()
+                return result
+        else:
+            return result
+"""
