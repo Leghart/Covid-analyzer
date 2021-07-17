@@ -4,12 +4,11 @@ class MainException(Exception):
     with varius errors.
     """
 
-    def __init__(self, text, description):
+    def __init__(self, text):
         super().__init__(text)
-        self.description = description
 
     def __str__(self):
-        return '{}: {}'.format(super().__str__(), self.description)
+        return "{}".format(super().__str__())
 
 
 class CollectDataException(MainException):
@@ -18,4 +17,11 @@ class CollectDataException(MainException):
     """
 
     def __init__(self, text):
-        super().__init__(text, 'Data wasnt uploaded yet. Please try later ...')
+        super().__init__(text)
+
+
+class ForbiddenValue(MainException):
+    """Exception informs that prediction made negative values"""
+
+    def __init__(self, text):
+        super().__init__(text)
