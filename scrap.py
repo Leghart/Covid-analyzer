@@ -65,15 +65,15 @@ class DailyReport:
             "Tot cases/1M: {}\nFatality ratio: {}\nTotal tests: {}\n"
             "Data recived: {}".format(
                 self.country,
-                __class__.format_number(str(self.new_cases)),
-                __class__.format_number(str(self.new_deaths)),
-                __class__.format_number(str(self.total_cases)),
-                __class__.format_number(str(self.total_deaths)),
-                __class__.format_number(str(self.total_recovered)),
-                __class__.format_number(str(self.active_cases)),
-                __class__.format_number(str(self.tot_1M)),
+                format_number(str(self.new_cases)),
+                format_number(str(self.new_deaths)),
+                format_number(str(self.total_cases)),
+                format_number(str(self.total_deaths)),
+                format_number(str(self.total_recovered)),
+                format_number(str(self.active_cases)),
+                format_number(str(self.tot_1M)),
                 str(self.fatality_ratio),
-                __class__.format_number(str(self.total_tests)),
+                format_number(str(self.total_tests)),
                 self.date,
             )
         )
