@@ -19,6 +19,7 @@ flask-table = "*"
 black = "*"
 isort = "*"
 flake8 = "*"
+urllib3 = "*"
 
 [dev-packages]
 
