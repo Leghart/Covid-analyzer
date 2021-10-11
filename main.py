@@ -3,12 +3,14 @@ import os
 import time
 
 from data_base import MainBase, PredBase
+from git_handler import git_push
 from processing import Process
 from scrap import CollectDataException
 from scrap import DailyReport as DR
 from setup import Country, Forecast_hor, scrap_time
 
-if __name__ == "__main__":
+
+def main():
     today_ = datetime.datetime.today().strftime("%d.%m.%Y")
     keys = ["New cases", "New deaths", "New recovered"]
 
@@ -35,7 +37,7 @@ if __name__ == "__main__":
                         config_plot=True,
                         config_db=True,
                     )
-
+                    git_push("Covid_Data.db", message="Linux update {}".format(today_))
                     # broad_file = Pl.path + r'\broadcaster'
                     # rec_file = Pl.path + r'\receiver'
                     # pass_file = Pl.path + r'\password'
@@ -52,3 +54,7 @@ if __name__ == "__main__":
             print("Error: ", e)
 
         time.sleep(5)
+
+
+if __name__ == "__main__":
+    main()

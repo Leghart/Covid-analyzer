@@ -376,7 +376,6 @@ class Process:
                         linestyle="-",
                         alpha=0.2,
                     )
-                    print("class path", __class__.path)
                     # full_path = __class__.path + r"\static\{}.png".format(key)
                     full_path = __class__.path + "/static/{}.png".format(key)
                     if os.path.isfile(full_path):
