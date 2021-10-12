@@ -14,15 +14,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pmdarima.arima import auto_arima
-from sklearn.preprocessing import MinMaxScaler
+
+# from sklearn.preprocessing import MinMaxScaler
 from statsmodels.tsa.holtwinters import ExponentialSmoothing as HWES
 from statsmodels.tsa.statespace.sarimax import SARIMAX
-from tensorflow.keras.layers import LSTM, Dense
-from tensorflow.keras.models import Sequential
 
 from data_base import MainBase, PredBase, init_db
 from exceptions import ForbiddenValue
 from scrap import format_number
+
+# from tensorflow.keras.layers import LSTM, Dense
+# from tensorflow.keras.models import Sequential
 
 
 class Process:
@@ -374,12 +376,13 @@ class Process:
                         linestyle="-",
                         alpha=0.2,
                     )
-
-                    full_path = __class__.path + r"\static\{}.png".format(key)
+                    # full_path = __class__.path + r"\static\{}.png".format(key)
+                    full_path = __class__.path + "/static/{}.png".format(key)
                     if os.path.isfile(full_path):
                         os.remove(full_path)
 
-                    plt.savefig(__class__.path + r"\static/{}".format(key))
+                    # plt.savefig(__class__.path + r"\static/{}".format(key))
+                    plt.savefig(__class__.path + "/static/{}".format(key))
                 plt.show()
                 return kwargs
             else:
@@ -536,118 +539,113 @@ value (less than 0). The result has been rounded to 0."
 
         return kwargs
 
-    @plot_decorator
-    @db_decorator
-    def LSTM(
-        self,
-        keys=["New cases", "New deaths"],
-        days_pred=7,
-        config_plot=True,
-        config_db=False,
-    ):
-        """
-        Long short-term memory - artificial recurrent neural network.
-        Split the data in a 0.75-0.25 (train-test). To learn neural
-        network, used a shift horizont of 1 day in back
-        (makes the best results). Network consists of 50 units of LSTM, a
-        fully connected layers: 1 and selected optimizer is 'nadam'.
-        Forecast: last downloaded data is given to network
-        (output of network is append to prediction_list, where in second
-        iteration last data will be used to feed network).
+    # @plot_decorator
+    # @db_decorator
+    # def LSTM(
+    #     self,
+    #     keys=["New cases", "New deaths"],
+    #     days_pred=7,
+    #     config_plot=True,
+    #     config_db=False,
+    # ):
+    #     """
+    #     Long short-term memory - artificial recurrent neural network.
+    #     Split the data in a 0.75-0.25 (train-test). To learn neural
+    #     network, used a shift horizont of 1 day in back
+    #     (makes the best results). Network consists of 50 units of LSTM, a
+    #     fully connected layers: 1 and selected optimizer is 'nadam'.
+    #     Forecast: last downloaded data is given to network
+    #     (output of network is append to prediction_list, where in second
+    #     iteration last data will be used to feed network).
 
-        Parameters:
-        -----------
-        - keys (list) - pointers to research
-        - days_pred (int) - number of days to look in the future
+    #     Parameters:
+    #     -----------
+    #     - keys (list) - pointers to research
+    #     - days_pred (int) - number of days to look in the future
 
-        Returns:
-        --------
-        - kwargs (dict) - dictionary for each key, icontaining data for
-        drawing graphs for: orignal, train, test and forecast data.
-        """
-        kwargs = {}
-        for key in keys:
-            # Get data
-            data = self.get_data_from_self()[key].values
-            data = data.reshape(len(data), 1)
+    #     Returns:
+    #     --------
+    #     - kwargs (dict) - dictionary for each key, icontaining data for
+    #     drawing graphs for: orignal, train, test and forecast data.
+    #     """
+    #     kwargs = {}
+    #     for key in keys:
+    #         # Get data
+    #         data = self.get_data_from_self()[key].values
+    #         data = data.reshape(len(data), 1)
 
-            # Normalize data to 0-1 (easier work with that)
-            scaler = MinMaxScaler(feature_range=(0, 1))
-            dataset = scaler.fit_transform(data)
+    #         # Normalize data to 0-1 (easier work with that)
+    #         scaler = MinMaxScaler(feature_range=(0, 1))
+    #         dataset = scaler.fit_transform(data)
 
-            # Set a train-test factor and split data
-            train_size = int(len(dataset) * 0.65)
+    #         # Set a train-test factor and split data
+    #         train_size = int(len(dataset) * 0.65)
 
-            train = dataset[0:train_size]
-            test = dataset[train_size : len(dataset)]  # noqa: E203
+    #         train = dataset[0:train_size]
+    #         test = dataset[train_size : len(dataset)]  # noqa: E203
 
-            # Shift horizont
-            look_back = 1
-            trainX, trainY = __class__.create_dataset(train, look_back)
-            testX, testY = __class__.create_dataset(test, look_back)
+    #         # Shift horizont
+    #         look_back = 1
+    #         trainX, trainY = __class__.create_dataset(train, look_back)
+    #         testX, testY = __class__.create_dataset(test, look_back)
 
-            # Create a special form (inputs, targets, sample_weights)
-            trainX = np.reshape(trainX, (trainX.shape[0], 1, trainX.shape[1]))
-            testX = np.reshape(testX, (testX.shape[0], 1, testX.shape[1]))
+    #         # Create a special form (inputs, targets, sample_weights)
+    #         trainX = np.reshape(trainX, (trainX.shape[0], 1, trainX.shape[1]))
+    #         testX = np.reshape(testX, (testX.shape[0], 1, testX.shape[1]))
 
-            # Create LSTM network and learn using train-set
-            model = Sequential()
-            model.add(LSTM(25, input_shape=(1, look_back)))
-            model.add(Dense(1))
-            model.compile(loss="mean_squared_error", optimizer="nadam")
-            model.fit(trainX, trainY, epochs=500, batch_size=64, verbose=1)
+    #         # Create LSTM network and learn using train-set
+    #         model = Sequential()
+    #         model.add(LSTM(25, input_shape=(1, look_back)))
+    #         model.add(Dense(1))
+    #         model.compile(loss="mean_squared_error", optimizer="nadam")
+    #         model.fit(trainX, trainY, epochs=500, batch_size=64, verbose=1)
 
-            # Use fitted network to predict a train and test sets
-            trainPredict = model.predict(trainX)
-            testPredict = model.predict(testX)
+    #         # Use fitted network to predict a train and test sets
+    #         trainPredict = model.predict(trainX)
+    #         testPredict = model.predict(testX)
 
-            # Get original values
-            trainPredict = scaler.inverse_transform(trainPredict)
-            testPredict = scaler.inverse_transform(testPredict)
+    #         # Get original values
+    #         trainPredict = scaler.inverse_transform(trainPredict)
+    #         testPredict = scaler.inverse_transform(testPredict)
 
-            # Forecast the next num_pred days
-            prediction_list = dataset[-look_back:]
-            for _ in range(days_pred):
-                x = prediction_list[-look_back:]
-                x = np.reshape(x, (1, -1))
-                x = np.reshape(x, (x.shape[0], 1, x.shape[1]))
-                out = model.predict(x)
-                prediction_list = np.append(prediction_list, out)
-            prediction_list = np.reshape(prediction_list, (1, -1))
-            prediction_list = scaler.inverse_transform(prediction_list)
-            prediction_list = prediction_list.flatten()  # 2D -> 1D
+    #         # Forecast the next num_pred days
+    #         prediction_list = dataset[-look_back:]
+    #         for _ in range(days_pred):
+    #             x = prediction_list[-look_back:]
+    #             x = np.reshape(x, (1, -1))
+    #             x = np.reshape(x, (x.shape[0], 1, x.shape[1]))
+    #             out = model.predict(x)
+    #             prediction_list = np.append(prediction_list, out)
+    #         prediction_list = np.reshape(prediction_list, (1, -1))
+    #         prediction_list = scaler.inverse_transform(prediction_list)
+    #         prediction_list = prediction_list.flatten()  # 2D -> 1D
 
-            # Prepare veriables to plot
-            bsc_time = list(range(1, len(dataset) + 1))
-            prediction_dates = list(
-                range(
-                    len(dataset),
-                    len(dataset) + days_pred + 1,
-                )
-            )
-            bsc_time.extend(prediction_dates)
+    #         # Prepare veriables to plot
+    #         bsc_time = list(range(1, len(dataset) + 1))
+    #         prediction_dates = list(range(len(dataset), len(dataset) + days_pred + 1))
+    #         bsc_time.extend(prediction_dates)
 
-            trainPredictPlot = np.empty_like(dataset)
-            trainPredictPlot[:, :] = np.nan
-            trainPredictPlot[: len(trainPredict)] = trainPredict
+    #         trainPredictPlot = np.empty_like(dataset)
+    #         trainPredictPlot[:, :] = np.nan
+    #         trainPredictPlot[: len(trainPredict)] = trainPredict
 
-            testPredictPlot = np.empty_like(dataset)
-            testPredictPlot[:, :] = np.nan
-            testPredictPlot[
-                len(trainPredict) + (look_back * 2) : len(dataset) - 2  # noqa: E203
-            ] = testPredict
+    #         testPredictPlot = np.empty_like(dataset)
+    #         testPredictPlot[:, :] = np.nan
+    #         testPredictPlot[
+    #             len(trainPredict) + (look_back * 2): len(dataset) - 2
+    #         ] = testPredict
 
-            kwargs[key] = __class__.make_cap(
-                bsc_time[: len(dataset)],
-                scaler.inverse_transform(dataset),
-                bsc_time[: len(trainPredictPlot)],
-                trainPredictPlot,
-                bsc_time[: len(trainPredictPlot)],
-                testPredictPlot,
-                prediction_dates,
-                prediction_list,
-            )
-        return kwargs
+    #         kwargs[key] = __class__.make_cap(
+    #             bsc_time[: len(dataset)],
+    #             scaler.inverse_transform(dataset),
+    #             bsc_time[: len(trainPredictPlot)],
+    #             trainPredictPlot,
+    #             bsc_time[: len(trainPredictPlot)],
+    #             testPredictPlot,
+    #             prediction_dates,
+    #             prediction_list,
+    #         )
+    #     return kwargs
 
     # @plot_decorator
     # @db_decorator
@@ -733,42 +731,42 @@ value (less than 0). The result has been rounded to 0."
             plt.show()
         return kwargs
 
-    @plot_decorator
-    @db_decorator
-    def VAR(
-        self,
-        keys=["New cases", "New deaths"],
-        days_pred=7,
-        config_plot=True,
-        config_db=False,
-    ):
-        """Forecasting method using vector autoregression."""
-        from statsmodels.tsa.vector_ar.var_model import VAR
+    # @plot_decorator
+    # @db_decorator
+    # def VAR(
+    #     self,
+    #     keys=["New cases", "New deaths"],
+    #     days_pred=7,
+    #     config_plot=True,
+    #     config_db=False,
+    # ):
+    #     """Forecasting method using vector autoregression."""
+    #     from statsmodels.tsa.vector_ar.var_model import VAR
 
-        data1 = self.get_data_from_self()[keys[0]]
-        data2 = self.get_data_from_self()[keys[1]]
+    #     data1 = self.get_data_from_self()[keys[0]]
+    #     data2 = self.get_data_from_self()[keys[1]]
 
-        data = list()
-        for i in range(len(data1)):
-            v1 = data1[i]
-            v2 = data2[i]
+    #     data = list()
+    #     for i in range(len(data1)):
+    #         v1 = data1[i]
+    #         v2 = data2[i]
 
-            row = [v1, v2]
-            data.append(row)
+    #         row = [v1, v2]
+    #         data.append(row)
 
-        model = VAR(data)
-        model_fit = model.fit()
+    #     model = VAR(data)
+    #     model_fit = model.fit()
 
-        yhat = model_fit.forecast(model_fit.y, steps=days_pred)
-        print("yhat: ", yhat)
-        dict = {keys[0]: int(yhat[0][0]), keys[1]: int(yhat[0][1])}
-        return dict
+    #     yhat = model_fit.forecast(model_fit.y, steps=days_pred)
+    #     print("yhat: ", yhat)
+    #     dict = {keys[0]: int(yhat[0][0]), keys[1]: int(yhat[0][1])}
+    #     return dict
 
 
-P = Process()
+# P = Process()
 # keys = ['New cases', 'New recovered', 'New deaths']
-keys = ["New cases"]
-num_pred = 5
+# keys = ["New cases"]
+# num_pred = 5
 # P.ARIMA(keys, num_pred, False, False)
 # P.charts_comparison(keys, num_pred, P.HVES, P.ARIMA)
 

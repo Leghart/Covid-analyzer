@@ -2,6 +2,7 @@
 broadcaster
 receiver
 password
+static/
 
 # temporary files
 tmp1.py
