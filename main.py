@@ -37,7 +37,7 @@ def main():
                         config_plot=True,
                         config_db=True,
                     )
-                    git_push("Covid_Data.db", message="Linux update {}".format(today_))
+                    git_push("Covid_Data.db", message="Linux update {}".format(today_), update_db=True)
                     # broad_file = Pl.path + r'\broadcaster'
                     # rec_file = Pl.path + r'\receiver'
                     # pass_file = Pl.path + r'\password'
