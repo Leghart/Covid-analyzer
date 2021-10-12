@@ -423,8 +423,8 @@ class Process:
                 try:
                     if self.cases_pred < 0:
                         raise ForbiddenValue(
-                            "The predicted value of new cases has a forbidden\
-                        value (less than 0). The result has been rounded to 0."
+                            "The predicted value of new cases has a forbidden \
+value (less than 0). The result has been rounded to 0."
                         )
                 except ForbiddenValue as e:
                     self.cases_pred = 0
@@ -434,7 +434,7 @@ class Process:
                     if self.deaths_pred < 0:
                         raise ForbiddenValue(
                             "The predicted value of new deaths has a forbidden\
-                        value (less than 0). The result has been rounded to 0."
+value (less than 0). The result has been rounded to 0."
                         )
                 except ForbiddenValue as e:
                     self.deaths_pred = 0
@@ -619,7 +619,12 @@ class Process:
 
             # Prepare veriables to plot
             bsc_time = list(range(1, len(dataset) + 1))
-            prediction_dates = list(range(len(dataset), len(dataset) + days_pred + 1))
+            prediction_dates = list(
+                range(
+                    len(dataset),
+                    len(dataset) + days_pred + 1,
+                )
+            )
             bsc_time.extend(prediction_dates)
 
             trainPredictPlot = np.empty_like(dataset)
@@ -629,7 +634,7 @@ class Process:
             testPredictPlot = np.empty_like(dataset)
             testPredictPlot[:, :] = np.nan
             testPredictPlot[
-                len(trainPredict) + (look_back * 2) : len(dataset) - 2
+                len(trainPredict) + (look_back * 2) : len(dataset) - 2  # noqa: E203
             ] = testPredict
 
             kwargs[key] = __class__.make_cap(
