@@ -11,8 +11,6 @@ requests = "*"
 matplotlib = "*"
 statsmodels = "*"
 pmdarima = "*"
-tensorflow = "*"
-sklearn = "*"
 flask = "*"
 sqlalchemy = "*"
 flask-table = "*"
@@ -25,7 +23,7 @@ gitpython = "*"
 [dev-packages]
 
 [requires]
-python_version = "3.8"
+python_version = "3.8.1"
 
 [pipenv]
 allow_prereleases = true

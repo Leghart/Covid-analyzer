@@ -22,6 +22,7 @@ from statsmodels.tsa.statespace.sarimax import SARIMAX
 from data_base import MainBase, PredBase, init_db
 from exceptions import ForbiddenValue
 from scrap import format_number
+from settings import OS_CON
 
 # from tensorflow.keras.layers import LSTM, Dense
 # from tensorflow.keras.models import Sequential
@@ -376,13 +377,12 @@ class Process:
                         linestyle="-",
                         alpha=0.2,
                     )
-                    # full_path = __class__.path + r"\static\{}.png".format(key)
-                    full_path = __class__.path + "/static/{}.png".format(key)
+                    full_path = OS_CON.join([__class__.path, "static", key + ".png"])
                     if os.path.isfile(full_path):
                         os.remove(full_path)
 
-                    # plt.savefig(__class__.path + r"\static/{}".format(key))
-                    plt.savefig(__class__.path + "/static/{}".format(key))
+                    # plt.savefig(__class__.path + "\\static/{}".format(key))
+                    plt.savefig(__class__.path + OS_CON + "static/{}".format(key))
                 plt.show()
                 return kwargs
             else:
@@ -782,47 +782,3 @@ value (less than 0). The result has been rounded to 0."
 # cap = {'date': '01-01-01','cases_pred': 10,
 #     'deaths_pred': 20}
 # PredBase.insert(**cap)
-
-"""
-class PlotDecorator:
-    def __init__(self, func):
-        self.func = func
-
-    def __call__(self, *args, **kwargs):
-        result = self.func(*args, **kwargs)
-        #config = __class__.decorator_selector('config_plot', *args, **kwargs)
-        config = True
-        if config:
-            for key in result:
-                plt.figure(key)
-                plt.plot(result[key][0][0],
-                         result[key][0][1],
-                         label='Original data')
-                plt.plot(result[key][1][0],
-                         result[key][1][1],
-                         label='Train data')
-                plt.plot(result[key][2][0],
-                         result[key][2][1],
-                         label='Test data')
-                plt.plot(result[key][3][0],
-                         result[key][3][1],
-                         label='Forecast')
-                plt.axvline(x=len(result[key][0][0]),
-                            color='k',
-                            linestyle='--')
-                plt.legend()
-                plt.title('{} ({})'.format(key, self.date[-1]))
-                plt.minorticks_on()
-                plt.grid(b=True, which='minor', color='#999999',
-                         linestyle='-', alpha=0.2)
-
-                full_path = __class__.path + r'\static\{}.png'.format(key)
-                if os.path.isfile(full_path):
-                    os.remove(full_path)
-
-                plt.savefig(__class__.path + r'\static/{}'.format(key))
-                plt.show()
-                return result
-        else:
-            return result
-"""

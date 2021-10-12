@@ -1,18 +1,16 @@
 import os
-import types
+import types  # noqa: F401
 
-from sqlalchemy import (Column, Float, ForeignKey, Integer,
-                        PrimaryKeyConstraint, Sequence, String, Text,
-                        create_engine)
+from sqlalchemy import Column, Float, Integer, Text, create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import backref, relationship, scoped_session, sessionmaker
+from sqlalchemy.orm import scoped_session, sessionmaker
 
-from setup import Country, db_name
+from settings import COUNTRY, DB_NAME, OS_CON
 
 # Prepare path to database where data will be saved.
 direct_path = os.path.dirname(os.path.abspath(__file__))
-path = "\\".join([direct_path, db_name])
-path = "/".join([direct_path, db_name])
+path = OS_CON.join([direct_path, DB_NAME])
+# path = "/".join([direct_path, DB_NAME])
 sql = "sqlite:///"
 
 # Create connection with DB
@@ -31,7 +29,7 @@ def init_db():
 class MainBase(Base):
     """A table storing data about all registered pointers."""
 
-    __tablename__ = Country
+    __tablename__ = COUNTRY
     date = Column(Text, primary_key=True)
     new_cases = Column(Integer)
     new_deaths = Column(Integer)
@@ -63,7 +61,7 @@ class MainBase(Base):
 class PredBase(Base):
     """A storing data on all predicted cases of infection and deaths."""
 
-    __tablename__ = Country + "_pred"
+    __tablename__ = COUNTRY + "_pred"
     date = Column(Text, primary_key=True)
     cases_pred = Column(Integer)
     deaths_pred = Column(Integer)

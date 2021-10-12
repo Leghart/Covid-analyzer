@@ -10,8 +10,16 @@ time (you can enter a little later time for data collection)
 - Forecast_hor - number of days to predict in the future (this value cannot be
 too large, because all forecasting methods will be affected by error)
 """
+from sys import platform
 
-Country = 'Poland'
-db_name = 'Covid_Data.db'
-scrap_time = '10:00'
-Forecast_hor = 7
+COUNTRY = "Poland"
+DB_NAME = "Covid_Data.db"
+SCRAP_TIME = "10:00"
+FORECAST_HOR = 7
+
+if platform == "linux":
+    OS_CON = "/"
+elif platform == "win32":
+    OS_CON = "\\"
+else:
+    print("Not handled yet")
