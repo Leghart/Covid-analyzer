@@ -415,7 +415,7 @@ class Process:
                 try:
                     self.cases_pred = int(kwargs["New cases"][3][1][0])
                     self.deaths_pred = int(kwargs["New deaths"][3][1][0])
-                    self.next_day = datetime.strptime(
+                    self.next_day = datetime.datetime.strptime(
                         self.date[-1], DATE_FORMAT
                     ) + timedelta(days=1)
                     self.next_day = self.next_day.strftime(DATE_FORMAT)

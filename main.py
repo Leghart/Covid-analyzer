@@ -18,7 +18,7 @@ def main():
     git_pull()
     date_string = MainBase.get_last_record(get_date=True)
 
-    day_after = datetime.strptime(date_string, DATE_FORMAT) + timedelta(days=1)
+    day_after = datetime.datetime.strptime(date_string, DATE_FORMAT) + timedelta(days=1)
 
     # last_commit_day = datetime.datetime.fromtimestamp(master.commit.committed_date)
     # print(datetime.datetime.strftime(day_after, "%d.%m.%Y"))
