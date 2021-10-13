@@ -27,5 +27,4 @@ def git_pull():
     origin = repo.remotes.origin
     origin.pull()
 
-    master = repo.head.reference
-    print("Git pull logs: ", master.log())
+    return repo.head.reference

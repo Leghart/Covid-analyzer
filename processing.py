@@ -8,6 +8,7 @@ import datetime
 import os
 import smtplib
 import ssl
+from datetime import timedelta
 from functools import wraps
 
 import matplotlib.pyplot as plt
@@ -22,7 +23,7 @@ from statsmodels.tsa.statespace.sarimax import SARIMAX
 from data_base import MainBase, PredBase, init_db
 from exceptions import ForbiddenValue
 from scrap import format_number
-from settings import OS_CON
+from settings import DATE_FORMAT, OS_CON
 
 # from tensorflow.keras.layers import LSTM, Dense
 # from tensorflow.keras.models import Sequential
@@ -381,7 +382,6 @@ class Process:
                     if os.path.isfile(full_path):
                         os.remove(full_path)
 
-                    # plt.savefig(__class__.path + "\\static/{}".format(key))
                     plt.savefig(__class__.path + OS_CON + "static/{}".format(key))
                 plt.show()
                 return kwargs
@@ -415,10 +415,10 @@ class Process:
                 try:
                     self.cases_pred = int(kwargs["New cases"][3][1][0])
                     self.deaths_pred = int(kwargs["New deaths"][3][1][0])
-                    self.next_day = datetime.datetime.strptime(
-                        self.date[-1], "%d.%m.%Y"
-                    ) + datetime.timedelta(days=1)
-                    self.next_day = self.next_day.strftime("%d.%m.%Y")
+                    self.next_day = datetime.strptime(
+                        self.date[-1], DATE_FORMAT
+                    ) + timedelta(days=1)
+                    self.next_day = self.next_day.strftime(DATE_FORMAT)
 
                 except KeyError:
                     return kwargs

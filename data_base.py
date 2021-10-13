@@ -10,7 +10,7 @@ from settings import COUNTRY, DB_NAME, OS_CON
 # Prepare path to database where data will be saved.
 direct_path = os.path.dirname(os.path.abspath(__file__))
 path = OS_CON.join([direct_path, DB_NAME])
-# path = "/".join([direct_path, DB_NAME])
+
 sql = "sqlite:///"
 
 # Create connection with DB

@@ -1,5 +1,4 @@
 from flask import Flask, render_template
-from flask_table import Col, Table
 
 from data_base import MainBase, PredBase
 

@@ -16,6 +16,7 @@ COUNTRY = "Poland"
 DB_NAME = "Covid_Data.db"
 SCRAP_TIME = "10:00"
 FORECAST_HOR = 7
+DATE_FORMAT = "%d.%m.%Y"
 
 if platform == "linux":
     OS_CON = "/"
