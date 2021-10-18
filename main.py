@@ -20,10 +20,6 @@ def main():
 
     day_after = datetime.datetime.strptime(date_string, DATE_FORMAT) + timedelta(days=1)
 
-    # last_commit_day = datetime.datetime.fromtimestamp(master.commit.committed_date)
-    # print(datetime.datetime.strftime(day_after, "%d.%m.%Y"))
-    # print(datetime.datetime.strftime(last_commit_day, "%d.%m.%Y"))
-
     if datetime.datetime.strftime(day_after, DATE_FORMAT) != today_:
         print("Database is not up to date! Program is exiting.")
         exit(-1)
@@ -55,7 +51,6 @@ def main():
                     git_push(
                         "Covid_Data.db",
                         message="Database update: {}".format(today_),
-                        update_db=True,
                     )
                     broad_file = Pl.path + OS_CON + "broadcaster"
                     rec_file = Pl.path + OS_CON + "receiver"
