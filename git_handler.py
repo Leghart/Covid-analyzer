@@ -8,7 +8,7 @@ import git
 from settings import OS_CON
 
 
-def git_push(*args, message="", update_db=False):
+def git_push(*args, message=""):
     try:
         path = os.getcwd() + OS_CON
         repo = git.Repo(path)
