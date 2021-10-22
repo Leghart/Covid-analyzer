@@ -15,7 +15,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pmdarima.arima import auto_arima
-
 # from sklearn.preprocessing import MinMaxScaler
 from statsmodels.tsa.holtwinters import ExponentialSmoothing as HWES
 from statsmodels.tsa.statespace.sarimax import SARIMAX
@@ -415,7 +414,7 @@ class Process:
                 try:
                     self.cases_pred = int(kwargs["New cases"][3][1][0])
                     self.deaths_pred = int(kwargs["New deaths"][3][1][0])
-                    self.next_day = datetime.strptime(
+                    self.next_day = datetime.datetime.strptime(
                         self.date[-1], DATE_FORMAT
                     ) + timedelta(days=1)
                     self.next_day = self.next_day.strftime(DATE_FORMAT)
