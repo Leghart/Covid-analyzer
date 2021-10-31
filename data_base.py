@@ -1,15 +1,13 @@
-import os
 import types  # noqa: F401
 
 from sqlalchemy import Column, Float, Integer, Text, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker
 
-from settings import COUNTRY, DB_NAME, OS_CON
+from settings import COUNTRY, DB_NAME, MAIN_PATH, OS_CON
 
 # Prepare path to database where data will be saved.
-direct_path = os.path.dirname(os.path.abspath(__file__))
-path = OS_CON.join([direct_path, DB_NAME])
+path = OS_CON.join([MAIN_PATH, DB_NAME])
 
 sql = "sqlite:///"
 
@@ -47,12 +45,7 @@ class MainBase(Base):
         specially prepared capsule data from scrap.py.
 
         Parameters:
-        -----------
         - kwargs (dict) - capsule of data containing data for each columns
-
-        Returns:
-        --------
-        - None
         """
         for key, var in kwargs.items():
             self.__dict__[key] = var
@@ -72,12 +65,7 @@ class PredBase(Base):
         specially prepared capsule data from processing.py.
 
         Parameters:
-        -----------
         - kwargs (dict) - capsule of data containing data for each columns
-
-        Returns:
-        --------
-        - None
         """
         for key, var in kwargs.items():
             self.__dict__[key] = var
@@ -90,11 +78,9 @@ def get_last_record(cls, get_date=False):
     (useful when checking for the record is already in the database).
 
     Parameters:
-    -----------
-    - get_date (bool)
+    - get_date (bool) - flag to get only a date from last record
 
     Returns:
-    --------
     - (list) - if get_date statement is True, returnin only last date, if
     get_date is False, returning last row from database
     """
@@ -112,12 +98,7 @@ def insert(cls, **kwargs):
     Insert dictionary as kwargs into selected table.
 
     Parameters:
-    -----------
     - kwargs (dict) - capsule of data to insert as a new row in database
-
-    Returns:
-    --------
-    - None
     """
     db_session.add(cls(**kwargs))
     db_session.commit()
@@ -128,12 +109,7 @@ def remove(cls, id):
     Delete record from selected table by given id as date.
 
     Parameters:
-    -----------
     - id (string) - ID of record to delete from database
-
-    Returns:
-    --------
-    - None
     """
     handler = cls.query.filter_by(date=id).first()
     db_session.delete(handler)
@@ -144,12 +120,7 @@ def get_data(cls):
     """
     Get all data from selected table.
 
-    Parameters:
-    -----------
-    - None
-
     Returns:
-    --------
     - data (list) - list where each record is a dictionary. Containing all data
     from database
     """
