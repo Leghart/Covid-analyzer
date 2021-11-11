@@ -6,8 +6,6 @@ them just call it and print result.
 """
 import datetime
 import os
-import smtplib
-import ssl
 from datetime import timedelta
 from functools import wraps
 
@@ -21,8 +19,8 @@ from statsmodels.tsa.statespace.sarimax import SARIMAX
 
 from data_base import MainBase, PredBase, init_db
 from exceptions import ForbiddenValue
-from scrap import format_number
-from settings import DATE_FORMAT, OS_CON
+from scrapper import format_number
+from settings import DATE_FORMAT, MAIN_PATH, OS_CON
 
 # from tensorflow.keras.layers import LSTM, Dense
 # from tensorflow.keras.models import Sequential
@@ -41,9 +39,6 @@ class Process:
     - LSTM - recurrent neural network - second forecast function
     - minor regression functions (HoltWinters, vector autoregression)
     """
-
-    # Path to directory where files were placed
-    path = os.path.dirname(os.path.abspath(__file__))
 
     # Names of columns in database.
     # Used in dynamically download data from database.
@@ -64,14 +59,6 @@ class Process:
         """
         Constructor of downloading data from database of
         selected country.
-
-        Parameters:
-        -----------
-        - None
-
-        Returns:
-        --------
-        - None
         """
         raw_data = MainBase.get_data()
 
@@ -88,12 +75,10 @@ class Process:
         Method making shift in data set - used in LSTM.
 
         Parameters:
-        -----------
         - dataset (array) - vector of data
         - look_back (int) - horizont of prediction
 
         Returns:
-        --------
         - dataX (array) - Shift x data in vector
         - dataY (array) - Shift y data in vector
         """
@@ -173,13 +158,7 @@ class Process:
     def raport_to_mail(self):
         """
         Prepare message to sent, written in Polish.
-
-        Parameters:
-        ----------
-        - None
-
         Returns:
-        --------
         - message (string) - correct form to send message using SMTPlib
         """
         subject = f"Raport z dnia: {self.date[-1]}"
@@ -214,47 +193,6 @@ class Process:
         return "Subject: {}\n\n{}".format(
             subject, message.encode("ascii", "ignore").decode("ascii")
         )
-
-    def send_mail(
-        self,
-        broadcaster_handler,
-        receiver_handler,
-        password_handler,
-    ):
-        """
-        Method of sending e-mails to list of receivers by the broadcaster
-        (e-mail) using a special browser key (each argument is in a
-        different files for privacy and enable easy extension).
-
-        Parameters:
-        -----------
-        - broadcaster_handler (string) - path to the file where the
-        sender's e-mail is saved
-        - receiver_handler (string) - path to the file where the receiver's
-        e-mails are saved, separeted with ';'
-        - password_handler (string) - path to the file, where password is saved
-
-        Returns:
-        --------
-        - None.
-        """
-        port = 465
-        smtp_serv = "smtp.gmail.com"
-        try:
-            broadcaster = open(broadcaster_handler).read()
-            receiver = open(receiver_handler).read().split(";")
-            password = open(password_handler).read()
-            message = self.raport_to_mail()
-            del receiver[-1]
-
-            ssl_pol = ssl.create_default_context()
-            with smtplib.SMTP_SSL(smtp_serv, port, context=ssl_pol) as serwer:
-                serwer.login(broadcaster, password)
-                serwer.sendmail(broadcaster, receiver, message)
-        except Exception as e:
-            print("Mail sending error:", e)
-        else:
-            print("Mail was sent!")
 
     def get_data_from_self(self):
         """
@@ -296,7 +234,6 @@ class Process:
         Parameters could be given as list or dictionary.
 
         Parameters:
-        -----------
         - pointer (string) - key to select which configuration will be detected
         - args (list) - list of arguments. If the called function uses only a
         list, variable dict_tmp should be checked to see if the configuration
@@ -304,7 +241,6 @@ class Process:
         - kwargs (dict) - dictionary of configuration value states
 
         Return:
-        -------
         - logic state (bool) - True if used argument had True state or False if
         has not.
         """
@@ -323,16 +259,7 @@ class Process:
         Function to decorate any prediction function, save plots of
         original data, train-test set data (optional) and forecast data.
         Before each plot save, if the figure exists, delete it.
-
-        Parameters:
-        -----------
-        - None
-
-        Returns:
-        --------
-        - Called function.
         """
-
         @wraps(f)
         def func(self, *args, **kw):
             kwargs = f(self, *args, **kw)
@@ -377,11 +304,11 @@ class Process:
                         linestyle="-",
                         alpha=0.2,
                     )
-                    full_path = OS_CON.join([__class__.path, "static", key + ".png"])
+                    full_path = OS_CON.join([MAIN_PATH, "static", key + ".png"])
                     if os.path.isfile(full_path):
                         os.remove(full_path)
 
-                    plt.savefig(__class__.path + OS_CON + "static/{}".format(key))
+                    plt.savefig(MAIN_PATH + OS_CON + "static/{}".format(key))
                 plt.show()
                 return kwargs
             else:
@@ -389,7 +316,7 @@ class Process:
 
         return func
 
-    def db_decorator(f):
+    def db_pred_decorator(f):
         """
         Function to decorate any prediction function, saves to database
         information on the date, cases and prognosis of deaths.
@@ -488,7 +415,7 @@ value (less than 0). The result has been rounded to 0."
         plt.show()
 
     @plot_decorator
-    @db_decorator
+    @db_pred_decorator
     def ARIMA(
         self,
         keys=["New cases", "New deaths"],
@@ -505,12 +432,10 @@ value (less than 0). The result has been rounded to 0."
         database and draw a forecast graph and original data.
 
         Parameters:
-        -----------
         - keys (list) - pointers to research
         - days_pred (int) - number of days to look in the future
 
         Returns:
-        --------
         - kwargs (dict) - dictionary for each key, icontaining data for
         drawing graphs for: orignal, train, test and forecast data.
         """
@@ -539,7 +464,7 @@ value (less than 0). The result has been rounded to 0."
         return kwargs
 
     # @plot_decorator
-    # @db_decorator
+    # @db_pred_decorator
     # def LSTM(
     #     self,
     #     keys=["New cases", "New deaths"],
@@ -558,12 +483,10 @@ value (less than 0). The result has been rounded to 0."
     #     iteration last data will be used to feed network).
 
     #     Parameters:
-    #     -----------
     #     - keys (list) - pointers to research
     #     - days_pred (int) - number of days to look in the future
 
     #     Returns:
-    #     --------
     #     - kwargs (dict) - dictionary for each key, icontaining data for
     #     drawing graphs for: orignal, train, test and forecast data.
     #     """
@@ -647,7 +570,7 @@ value (less than 0). The result has been rounded to 0."
     #     return kwargs
 
     # @plot_decorator
-    # @db_decorator
+    # @db_pred_decorator
     def HVES(
         self,
         keys=["New cases", "New deaths"],
@@ -659,12 +582,10 @@ value (less than 0). The result has been rounded to 0."
         Forecasting method using HoltWinters method. If the days_pred is
         greater, the forecast is worse.
         Parameters:
-        -----------
         - keys (list) - pointers to research
         - days_pred (int) - number of days to look in the future
 
         Returns:
-        --------
         - kwargs (dict) - dictionary for each key, icontaining data for
         drawing graphs for: orignal, train, test and forecast data.
         """
@@ -696,7 +617,7 @@ value (less than 0). The result has been rounded to 0."
         return kwargs
 
     @plot_decorator
-    @db_decorator
+    @db_pred_decorator
     def SARIMA(
         self,
         keys=["New cases", "New deaths"],
@@ -731,7 +652,7 @@ value (less than 0). The result has been rounded to 0."
         return kwargs
 
     # @plot_decorator
-    # @db_decorator
+    # @db_pred_decorator
     # def VAR(
     #     self,
     #     keys=["New cases", "New deaths"],

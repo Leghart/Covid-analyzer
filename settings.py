@@ -10,6 +10,7 @@ time (you can enter a little later time for data collection)
 - Forecast_hor - number of days to predict in the future (this value cannot be
 too large, because all forecasting methods will be affected by error)
 """
+import os
 from sys import platform
 
 COUNTRY = "Poland"
@@ -17,6 +18,9 @@ DB_NAME = "Covid_Data.db"
 SCRAP_TIME = "10:00"
 FORECAST_HOR = 7
 DATE_FORMAT = "%d.%m.%Y"
+
+# Path to directory where files were placed
+MAIN_PATH = os.path.dirname(os.path.abspath(__file__))
 
 if platform == "linux":
     OS_CON = "/"

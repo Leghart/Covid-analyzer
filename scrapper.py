@@ -32,32 +32,12 @@ class DailyReport:
     """
 
     def __init__(self, country="Poland"):
-        """
-        Constructor downloaded data.
-
-        Parameters:
-        -----------
-        - country (string) - country from which data will be download.
-         Please check if your country exists in www.worldometers.com
-
-        Returns:
-        --------
-        - None
-        """
         self.get_actual_data(country)
+        print(self)
 
     def __str__(self):
         """
         Simple report in terminal, showing daily data.
-
-        Parameters:
-        -----------
-        - None
-
-        Returns:
-        --------
-        - (string) - prepared message for printing, informing about
-        the daily report
         """
         return (
             "Country: {}\nNew cases: {}\nNew deaths: {}\nTotal cases: {}\n"
@@ -88,13 +68,8 @@ class DailyReport:
         storing main inforamtions.
 
         Parameters:
-        -----------
         - country (string) - country from which data will be download.
          Please check if your country exists in www.worldometers.com
-
-        Returns:
-        --------
-        - None
         """
         url = "https://www.worldometers.info/coronavirus/#main_table"
         page = get(url)
@@ -143,14 +118,6 @@ class DailyReport:
         """
         Return capsule with data to use it as kwargs during insert
         to database.
-
-        Parameters:
-        -----------
-        - None
-
-        Returns:
-        --------
-        - None
         """
         return {
             "new_cases": self.new_cases,
@@ -171,16 +138,11 @@ class DailyReport:
         https://github.com/CSSEGISandData/COVID-19
 
         Parameters:
-        -----------
         - ofile (string) - path to folder where the daily data files
         are located
         - nfile (string) - path to file where you want to save data for the
         selected country
         - country (string) - country name
-
-        Returns:
-        --------
-        - None
         """
         out_file = open(nfile, "w")
         for filename in os.listdir(ofile):
